@@ -1,101 +1,82 @@
-# Desafio Prático — Spec Driven Development
+# Motor de Cálculo de Reembolso — Desafio SDD
 
-Aula bônus de SDD, fechando a trilha:
+Implementação em Python 3.11 de um motor de reembolso orientado por especificação, com processamento de despesas em JSON, política externa por centro de custo e conversão de moedas por cotações históricas. O projeto incorpora as alterações do **Envelope 2**.
 
-`AI Fluency` → `Claude 101` → `Claude Code 101` → `Building with the Claude API` → `Claude Code in Action` → `Módulo SDD` → **Desafio**
+**Repositório:** https://github.com/AndreiBritto07/sdd-desafio
 
-**Individual · 2 dias · Claude Code**
+## Requisitos
 
----
+- Python 3.11 (biblioteca padrão apenas: `decimal`, `json`, `argparse`, `unittest` e demais módulos nativos).
+- Executar os comandos a partir da raiz do repositório.
 
-## Comece por aqui
+## Como executar
 
-1. **[`DESAFIO.md`](DESAFIO.md)** — o enunciado. Leia inteiro antes de escrever qualquer coisa.
-2. **[`RUBRICA.md`](RUBRICA.md)** — como você é avaliado. É pública de propósito; leia antes de começar.
-3. **[`exemplos/despesas-exemplo.json`](exemplos/despesas-exemplo.json)** — a entrada de referência. Não é decoração: percorra item por item antes de escrever a spec.
-4. **[`FAQ.md`](FAQ.md)** — travou? Comece por aqui. **O instrutor está fora durante o desafio**, então o FAQ é o canal de suporte.
-
----
-
-## Como participar
-
-**1. Faça um fork deste repositório.** Ele precisa ser público, ou você não conseguirá compartilhar depois.
-
-**2. Clone o seu fork e prepare a estrutura de trabalho:**
+O comando exige explicitamente os quatro caminhos: entrada, saída, política e câmbio.
 
 ```bash
-git clone https://github.com/<seu-usuario>/sdd-desafio.git
-cd sdd-desafio
-cp template/CLAUDE.md .
-cp -r template/specs .
-cp -r template/docs .
-git add -A && git commit -m "chore: estrutura inicial a partir do template"
+python -m src calcular \
+  --input exemplos/envelope/despesas-envelope.json \
+  --output resultado-envelope.json \
+  --politica exemplos/envelope/politica-v4.json \
+  --cambio exemplos/envelope/cambio.json
 ```
 
-<details>
-<summary>PowerShell</summary>
+Exemplo de centro de custo desconhecido:
 
-```powershell
-git clone https://github.com/<seu-usuario>/sdd-desafio.git
-cd sdd-desafio
-Copy-Item template\CLAUDE.md .
-Copy-Item template\specs . -Recurse
-Copy-Item template\docs . -Recurse
-git add -A; git commit -m "chore: estrutura inicial a partir do template"
-```
-</details>
-
-Os arquivos em `template/` são esqueletos com as perguntas que cada documento precisa responder. Deixe a pasta `template/` onde está — ela serve de referência.
-
-**3. Trabalhe no seu fork**, seguindo as três regras do jogo descritas no [`DESAFIO.md`](DESAFIO.md):
-
-- Nenhum commit sem task
-- Explicação no chat que não está na spec é bug de spec
-- Interações exportadas (`/export`) e commitadas em `docs/sessions/`
-
-**4. No Dia 2, às 10h**, você recebe uma mudança de requisito pelo canal da turma. Ela é obrigatória e vale 20 pontos. Chegue nesse momento com o sistema base funcionando e testado.
-
-> Durante os dois dias o instrutor está de férias e não responde mensagens. Dúvida de processo: [`FAQ.md`](FAQ.md). Dúvida sobre o que a política do RH significa não tem resposta — decidir isso é o exercício.
-
-**5. Entregue** enviando o link do seu fork no formulário. Prazo: **Dia 2, 18h**.
-
----
-
-## O que o seu fork precisa conter ao final
-
-```
-seu-fork/
-├── CLAUDE.md                     # convenções do projeto para o agente
-├── README.md                     # como rodar e como testar o SEU projeto
-├── specs/
-│   └── 001-motor-reembolso/
-│       ├── spec.md               # o QUÊ e o PORQUÊ
-│       ├── plan.md               # o COMO
-│       ├── tasks.md              # T-001..T-0NN, com critério de aceite
-│       └── DECISIONS.md          # log de mudanças de spec
-├── src/
-├── tests/
-└── docs/
-    ├── sessions/                 # exports das suas conversas com o Claude
-    └── RELATORIO.md              # o relatório final
+```bash
+python -m src calcular \
+  --input exemplos/envelope/despesas-envelope-cc-desconhecido.json \
+  --output resultado-cc-desconhecido.json \
+  --politica exemplos/envelope/politica-v4.json \
+  --cambio exemplos/envelope/cambio.json
 ```
 
-Sobre o `README.md`: substitua este arquivo pelo README do **seu** projeto — como rodar, como testar, o que você construiu. Um README que não permite rodar o projeto custa pontos.
+Para visualizar a saída formatada:
 
----
+```bash
+python -m json.tool resultado-envelope.json
+```
 
-## Antes de começar, confirme que o `/export` funciona
+Os exemplos em `exemplos/envelope/` precisam estar presentes localmente. Se ainda não estiverem versionados, adicione os quatro arquivos JSON oficiais do Envelope 2 antes da entrega.
 
-Abra o Claude Code, troque duas mensagens, rode `/export` e confirme que o arquivo foi gerado.
+## Como testar
 
-Faça isso **agora**, não no Dia 2. Sem `docs/sessions/`, o critério de relatório vale zero — e já aconteceu de gente que fez tudo certo descobrir no último dia que não tinha registro nenhum do trabalho.
+```bash
+python -m unittest discover -s tests -v
+```
 
-Exporte ao final de **cada** sessão, nomeando `docs/sessions/01-descricao-curta.md`, `02-...`, e assim por diante.
+**Evidência observada em 20/10/2026:** 16 testes executados, todos com resultado `OK`. A suíte cobre fixtures, validação global, casos selecionados do motor, contrato da CLI e serialização. Isso **não** comprova cobertura integral de todos os requisitos ou cenários de erro.
 
----
+## Contrato e comportamentos
 
-## O resumo em um parágrafo
+O contrato normativo está em [`specs/001-motor-reembolso/spec.md`](specs/001-motor-reembolso/spec.md), complementado por [`DECISIONS.md`](specs/001-motor-reembolso/DECISIONS.md). Entre as regras previstas estão:
 
-Você vai receber uma política de reembolso escrita por um RH, com a redação ruim que uma política de RH real tem. Ela é ambígua em vários pontos, e você não tem acesso a ninguém para tirar dúvida. O trabalho não é implementar — é **especificar**: encontrar cada ambiguidade, decidir explicitamente, justificar e registrar. O produto funcionando vale **10 dos 100 pontos**. Os outros 90 estão na spec, na rastreabilidade `spec → tasks → commits → testes`, na resposta à mudança de requisito do Dia 2 e no relatório.
+- Validação do envelope e dos campos obrigatórios do colaborador.
+- Tratamento individual de despesas inválidas sem necessariamente rejeitar todo o lote.
+- Limites por categoria e centro de custo, incluindo fallback para a política padrão quando aplicável.
+- Conversão para BRL com cotação anterior disponível, quando necessário.
+- Aplicação de limites e exigência de nota fiscal conforme a política.
+- Teto máximo de R$ 300,00 para representação em `CC-COMERCIAL`.
+- Saída JSON com itens, motivos, avisos e resumo financeiro.
 
-Isso é deliberado. Um projeto que roda perfeitamente com spec fraca tira nota baixa; um projeto com bug conhecido, spec impecável e trilha limpa tira nota alta.
+A implementação e os testes devem ser consultados para verificar quais cenários estão efetivamente cobertos. **Valores exibidos por `python -m json.tool` podem aparecer com uma casa decimal**, portanto a inspeção visual desse comando não demonstra preservação de duas casas no arquivo original.
+
+## Organização
+
+| Caminho | Finalidade |
+|---|---|
+| `src/` | Código Python do motor e entrada da CLI |
+| `tests/` | Testes automatizados e fixtures |
+| `specs/001-motor-reembolso/spec.md` | Requisitos e critérios de aceite |
+| `specs/001-motor-reembolso/plan.md` | Plano técnico |
+| `specs/001-motor-reembolso/tasks.md` | Tarefas e rastreabilidade |
+| `specs/001-motor-reembolso/DECISIONS.md` | Histórico de decisões |
+| `docs/evidencias/` | Evidências de inspeção e execução |
+| `docs/sessions/` | Exportações das sessões, quando disponíveis |
+| `docs/RELATORIO.md` | Relatório final |
+
+## Evidências e limites
+
+Foram observadas execuções da CLI com os exemplos do Envelope 2 e um cenário de centro de custo desconhecido, além da suíte de 16 testes. Os resultados de execução não substituem auditoria de conformidade completa da especificação.
+
+Consulte [`docs/RELATORIO.md`](docs/RELATORIO.md) para rastreabilidade, decisões e limitações identificadas.
