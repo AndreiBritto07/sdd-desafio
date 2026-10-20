@@ -510,3 +510,27 @@ Dez testes complementares aprovados constam em `tests/test_criterios_complementa
 | `test_ac035_hospedagem_proibida_para_engenharia` | AC-035 (proibição) |
 
 **Estado:** evidências complementares aprovadas, sem declarar integralmente concluídas T-001 a T-047. Em particular, T-027/T-028 requerem os demais cenários da CLI, T-035/T-036 requerem a rejeição de cotação em notação científica e T-030/T-045/T-047 requerem a matriz completa AC/RN/T/teste/resultado/evidência. O arquivo `tests/test_criterios_complementares.py` deve ser incluído no commit se ainda estiver apenas no ambiente local.
+
+
+---
+
+## Atualização de evidências — 82 testes (20/10/2026)
+
+O responsável apresentou execução da CLI com os quatro argumentos e `python -m unittest discover -s tests -v` → `Ran 82 tests in 3.731s`, `OK`, sem skips. O commit `5efa7a5` registra os 47 testes adicionais, após `00a9c52` (documentação do marco de 35 testes). Os registros anteriores de 3, 16, 25 e 35 testes são históricos.
+
+**T-001:** a inspeção inicial possui inventário, ambiente, commit-base, schemas observados, fixtures, stack e ausência de suíte-base documentados em `docs/evidencias/T-001-baseline.md`. A finalidade de inspeção está demonstrada; validação semântica integral dos schemas é objeto de T-033/T-035, não um resultado do baseline.
+
+**T-030/T-045/T-047:** `MATRIZ_RASTREABILIDADE_AC.md` apresenta vínculos por AC e nomes reais de testes. Ainda requer revisão da abrangência de cada critério e comprovação dos critérios documentais de pronto antes de declarar as 47 tarefas concluídas.
+
+**Lacunas de evidência a verificar:** T-039 (overflow de conversão individual) e T-041 (categoria de representação permitida sem limite diário próprio). Não alterar o aceite das tarefas nem o contrato para fazer os testes passarem. O resultado verde da suíte não prova automaticamente esses cenários.
+
+---
+
+## Atualização de evidência — 84 testes (20/10/2026)
+
+- **T-039:** `tests/test_lacunas_aceite.py::test_ac030_overflow_individual_nao_aborta_lote` exercita `InvalidOperation` simulada na conversão individual, recusa do item afetado, marcação de totais incompletos e continuidade do item seguinte. **Limitação:** não é demonstração de overflow natural causado por cotação extrema.
+- **T-041:** `tests/test_lacunas_aceite.py::test_ac034_representacao_sem_limite_diario_proprio` exercita representação permitida com política mensal e teto diário absoluto de R$ 300,00. Implementação ajustada em `src/motor.py`.
+- **Execução informada pelo responsável:** `Ran 84 tests in 3.687s`, `OK`. Não foi observado novo commit ou execução independente neste pacote.
+- **T-030/T-045/T-047:** manter revisão formal de abrangência dos AC/RN e dos critérios documentais de pronto; aprovação da suíte não implica cobertura integral.
+
+Este registro mais recente substitui, para o **estado atual**, as indicações históricas de lacunas T-039/T-041 da seção de 82 testes acima, preservadas para rastreabilidade.

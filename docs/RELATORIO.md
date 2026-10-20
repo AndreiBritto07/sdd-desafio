@@ -125,3 +125,36 @@ Hashes abreviados foram observados no histórico compartilhado; confirmar os com
 **Inspeção assistida:** `src/motor.py`, `src/validacao_global.py` e `src/__main__.py` foram examinados; isso não substitui teste de aceitação. Ainda não está demonstrada a cobertura integral dos 36 ACs, especialmente todos os subcasos de AC-017 e a rejeição de notação científica em cotações exigida por RN-020/AC-023. Não foram apresentados nesta rodada novo `git status`, hash do commit dos dez testes nem validação independente da matriz completa.
 
 **Transparência:** os testes foram preparados com assistência de ChatGPT e executados pelo responsável. Não atribuir execução ao Claude Code, sessões exportadas, revisão integral de diffs ou validação externa sem evidência.
+
+
+---
+
+## Atualização final de execução — suíte de 82 testes (20/10/2026)
+
+**Comando informado pelo responsável:** `python -m unittest discover -s tests -v`, após executar `python -m src calcular` com os quatro argumentos e gerar `resultado-envelope.json`. **Resultado informado:** `Ran 82 tests in 3.731s`, `OK`, sem falhas e sem skips. Uma execução anterior havia registrado `Ran 82 tests in 3.640s`, `OK (skipped=1)`; o artefato foi gerado e a suíte reexecutada para incluir o teste condicional. Preservam-se os marcos de 16, 25 e 35 testes como histórico.
+
+**Commits apresentados:** `00a9c52` (`docs: sincroniza SDD e evidencias de 35 testes`) e `5efa7a5` (`test: adiciona 47 testes complementares de aceite`); `main` e `origin/main` estavam sincronizadas, com `git status --short` vazio antes da geração do JSON temporário. Não há confirmação posterior de limpeza desse JSON.
+
+**Rastreabilidade:** `MATRIZ_RASTREABILIDADE_AC.md` lista associações entre ACs, RNs, tarefas e testes. É inventário para auditoria; não comprova todos os subcasos nem encerra automaticamente T-001 a T-047. Há pontos a verificar em T-039 (overflow) e T-041 (categoria permitida sem limite diário). O registro de baseline permite reconhecer a inspeção da T-001 sem atribuir validação semântica integral aos scripts diagnósticos.
+
+**Transparência:** testes preparados com assistência de ChatGPT e executados pelo responsável. Não há comprovação de sessões exportadas do Claude Code, revisão integral dos diffs ou aprovação externa. O relatório mantém campos pessoais não inferidos.
+
+---
+
+## Atualização final de execução informada — 20/10/2026
+
+O responsável informou execução local após substituição de `src/motor.py` e `tests/test_lacunas_aceite.py`:
+
+```text
+Ran 84 tests in 3.687s
+
+OK
+```
+
+**Interpretação:** 84 testes executados com resultado `OK` (nenhuma falha/erro reportado); o trecho fornecido não traz hashes de arquivos nem demonstra execução independente por esta assistência. Os marcos anteriores (inclusive 82 testes) são históricos, não o estado mais recente.
+
+**T-039:** injeção controlada de `InvalidOperation` comprova tratamento de exceção numérica individual e continuidade do lote. Não equivale à reprodução de overflow espontâneo com cotação real.
+
+**T-041:** correção de teto diário de R$ 300,00 para representação comercial com periodicidade mensal, sem dispensar o limite mensal.
+
+**Pendências de fechamento:** confirmar estado do Git e ausência de arquivos de teste duplicados; revisar integralmente a abrangência da matriz AC/RN/T/teste e critérios de pronto de T-030/T-045/T-047 antes de declarar conformidade completa. Nenhum novo commit foi confirmado.

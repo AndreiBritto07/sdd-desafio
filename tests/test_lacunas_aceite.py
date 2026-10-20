@@ -9,7 +9,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from unittest.mock import patch
 from pathlib import Path
 
 from src.motor import executar, parse, serializar
@@ -285,6 +286,39 @@ class TestLacunasAceite(unittest.TestCase):
     def test_ac036_moedas_diferentes_nao_duplicam(self):
         a=D('a');b=D('b',moeda='USD',descricao=a['descricao'])
         r=run([a,b]);self.assertNotEqual(r['items'][1]['status'],'IGNORADO')
+
+    def test_ac030_overflow_individual_nao_aborta_lote(self):
+        # Injecao controlada de falha numerica na conversao USD.
+        # Nao pressupoe que uma cotacao alta provoque overflow naturalmente.
+        import src.motor as motor
+        quant_original = motor.quant
+
+        def quant_com_falha(valor):
+            if valor == Decimal('54.20'):
+                raise InvalidOperation('falha numerica simulada na conversao')
+            return quant_original(valor)
+
+        with patch.object(motor, 'quant', side_effect=quant_com_falha):
+            r = run([D('extremo', valor='10.00', moeda='USD'),
+                     D('normal', valor='10.00')])
+        self.assertEqual(r['items'][0]['status'], 'RECUSADO')
+        self.assertIn('ENTRADA_INVALIDA', r['items'][0]['motivos'])
+        self.assertEqual(r['items'][0]['valor_reembolsavel'], 0)
+        self.assertFalse(r['resumo']['totais_completos'])
+        self.assertEqual(r['items'][1]['status'], 'APROVADO')
+
+    def test_ac034_representacao_sem_limite_diario_proprio(self):
+        # Categoria permitida com limite mensal, mas sem limite diario.
+        p = P()
+        p['centros_custo']['CC-COMERCIAL'] = {
+            'representacao': {'limite': Decimal('1000'), 'periodicidade': 'mes'}
+        }
+        e = E([D('r1', valor='340', categoria='representacao')])
+        e['colaborador']['centro_custo'] = 'CC-COMERCIAL'
+        r = executar(e, p, C())
+        self.assertEqual(r['items'][0]['valor_reembolsavel'], Decimal('300.00'))
+        self.assertEqual(r['items'][0]['status'], 'PARCIAL')
+        self.assertIn('LIMITE_DIARIO', r['items'][0]['motivos'])
 
     def test_ac017_cli_argumento_obrigatorio_ausente_saida_2(self):
         p=subprocess.run([sys.executable,'-m','src','calcular'],capture_output=True,text=True)

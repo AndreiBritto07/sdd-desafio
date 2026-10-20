@@ -809,3 +809,20 @@ Este registro não modifica RN-001 a RN-026 nem AC-001 a AC-036. A correspondên
 Após os marcos históricos de 16 e 25 testes, o responsável executou `python -m unittest discover -s tests -v` e informou `Ran 35 tests in 1.373s` e `OK`, com 35 testes aprovados, zero falhas e zero ignorados. A suíte inclui dez testes em `tests/test_criterios_complementares.py`, que exercitam cenários de AC-001, AC-002, AC-007, AC-017, AC-024, AC-026, AC-030, AC-033 e AC-035. O primeiro teste complementar de CLI falhou por um problema na fixture do teste, que foi corrigido; a nova execução completa passou.
 
 Este registro não modifica RN-001 a RN-026, AC-001 a AC-036 nem decisões vigentes. Ainda falta uma matriz de cobertura integral com todos os cenários normativos, inclusive cotação em notação científica (RN-020/AC-023) e caminhos de erro operacional da CLI (RN-017/AC-017).
+
+
+---
+
+## Atualização de evidência — 82 testes (20/10/2026)
+
+O responsável executou `python -m src calcular` com os quatro caminhos explícitos, gerando `resultado-envelope.json`, e em seguida `python -m unittest discover -s tests -v`. Saída informada: `Ran 82 tests in 3.731s` e `OK`, sem indicação de testes ignorados. Assim, foram 82 testes aprovados, sem falhas e sem skips nessa execução. A versão anterior com 35 testes permanece como marco histórico.
+
+Os testes adicionais foram versionados no commit `5efa7a5` (`test: adiciona 47 testes complementares de aceite`), posterior a `00a9c52` (sincronização documental de 35 testes). A matriz `MATRIZ_RASTREABILIDADE_AC.md` identifica vínculos entre critérios e testes; a execução verde não demonstra por si só cobertura integral de todos os subcasos. Nenhuma RN, AC ou decisão financeira foi alterada por esta atualização.
+
+---
+
+## Registro de validação posterior — 20/10/2026 (84 testes)
+
+A regra vigente de representação comercial para `CC-COMERCIAL` conserva o teto diário absoluto de R$ 300,00, inclusive quando a regra da categoria na política usa periodicidade mensal; nesse caso os tetos diário e mensal se acumulam, prevalecendo o menor saldo aplicável. Isto registra a correção de implementação, sem substituir decisões anteriores.
+
+O tratamento de exceção numérica por item na conversão cambial foi exercitado por injeção controlada de `InvalidOperation`, sem demonstrar que uma cotação elevada necessariamente produza overflow natural.

@@ -111,3 +111,16 @@ Este plano não equivale à conclusão das tarefas nem à aprovação da especif
 - **Limite da evidência:** não existe demonstração de que cada um dos 36 ACs tenha um teste correspondente aprovado. A matriz de rastreabilidade e o fechamento da T-047 permanecem pendentes.
 
 As seções de fases e riscos acima são histórico do plano de execução, não afirmação de que a implementação ainda não começou. O arquivo de saída `resultado-envelope.json` é artefato gerado localmente, não fixture oficial.
+
+
+---
+
+## 12. Atualização de execução — 82 testes (20/10/2026)
+
+O responsável executou a CLI com os quatro argumentos, gerou `resultado-envelope.json` e informou `python -m unittest discover -s tests -v` → `Ran 82 tests in 3.731s`, `OK`, sem skips. Commit dos 47 testes adicionais: `5efa7a5`; documentação anterior: `00a9c52`. Os marcos de 16 e 35 testes acima são históricos. A matriz `MATRIZ_RASTREABILIDADE_AC.md` é um inventário de vínculos para revisão, não certificação automática de cobertura integral. O aceite de T-001 pode ser encerrado como inspeção documentada, preservando o limite de que os schemas externos não foram integralmente validados no baseline.
+
+---
+
+## Marco de verificação — 20/10/2026 (84 testes)
+
+A implementação do teto diário de representação comercial foi corrigida para coexistir com o limite mensal. O cenário de exceção numérica foi validado com injeção controlada. O responsável reportou `Ran 84 tests in 3.687s`, `OK`, após substituir os arquivos. O próximo passo é verificar os arquivos e o estado do Git, depois realizar o commit consolidado. A revisão integral de todos os subcritérios AC/RN permanece separada da aprovação da suíte.

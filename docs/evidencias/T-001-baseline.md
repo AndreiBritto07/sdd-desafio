@@ -354,3 +354,10 @@ O script verificou raiz como objeto, moeda-base `BRL`, tipos textuais de `fonte`
 | Validação semântica integral e testes de produção | Não demonstrados; permanecem para as tarefas correspondentes |
 
 **Parecer:** a finalidade de inspeção e diagnóstico da T-001 foi cumprida com limitações explicitadas. A ausência de uma CLI e de uma suíte-base foi observada, não encoberta. É defensável encerrar a T-001 **como tarefa de inspeção**, desde que a revisão seja versionada e o backlog seja atualizado de forma rastreável; não é defensável declarar RN-019/RN-020 integralmente validados ou testes funcionais aprovados.
+
+
+---
+
+## 10. Parecer atualizado de T-001 — 20/10/2026
+
+O registro do baseline comprova a inspeção do projeto no estado-base (`16d6c781e469a61586c282abe82a7a931cc69652`), a ausência de `src/` e `tests/` naquela data, o inventário, as estruturas externas observadas, os comandos e a stack aprovada. A ausência de suíte naquele momento não representa falha funcional. O objetivo de inspeção da T-001 está atendido pelas evidências registradas; o backlog pode registrar esse fechamento **como inspeção**, sem afirmar validação semântica integral de RN-019/RN-020. A CLI e a suíte foram implementadas posteriormente; o responsável informou execução de 82 testes (`OK`, sem skips) após gerar o JSON da CLI. As afirmações de que a CLI ainda não existia nas seções históricas referem-se exclusivamente ao baseline.

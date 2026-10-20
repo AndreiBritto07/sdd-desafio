@@ -320,3 +320,18 @@ Esta nota atualiza somente o **estado de execução**. Todas as decisões AMB, E
 O responsável informou a execução de `python -m unittest discover -s tests -v` com `Ran 35 tests in 1.373s` e `OK`, sem falhas nem testes ignorados. Dez testes complementares foram adicionados em `tests/test_criterios_complementares.py`. O teste de CLI inicialmente falhou por serialização incorreta de números na fixture de teste, corrigida antes da execução bem-sucedida. O marco anterior de 16 testes permanece como registro histórico; houve também execução intermediária de 25 testes.
 
 A inspeção assistida de `src/motor.py`, `src/validacao_global.py` e `src/__main__.py` não equivale a aceite formal dos 36 ACs. Requer atenção específica a RN-020/AC-023 (notação científica de cotações) e ao conjunto completo de AC-017. Nenhuma decisão AMB, E2 ou CONS foi alterada por esta atualização.
+
+
+---
+
+### REV-EXEC-82-2026-10-20 — Atualização de evidência, sem mudança normativa
+
+O responsável apresentou execução da CLI com arquivos do Envelope 2 e depois da suíte `python -m unittest discover -s tests -v`: `Ran 82 tests in 3.731s`, `OK`, sem skips. Os 47 testes novos constam no commit `5efa7a5`, após o commit documental `00a9c52`. O marco de 35 testes é histórico, não o estado mais recente. O mapeamento AC/RN/T/teste foi reunido em `MATRIZ_RASTREABILIDADE_AC.md` para conferência de abrangência. As decisões AMB, E2 e CONS permanecem inalteradas.
+
+---
+
+## Registro de implementação e evidências — 20/10/2026
+
+- **T-041 / AC-034:** correção de aplicação do teto diário de R$ 300,00 em representação de `CC-COMERCIAL` também com política mensal, preservando o teto mensal. Não constitui nova decisão de negócio.
+- **T-039 / AC-030:** teste de exceção numérica individual com `InvalidOperation` simulada; comprova recuperação e continuidade do lote nesse caminho, não overflow natural em cotação extrema. Não constitui nova decisão de negócio.
+- O responsável informou execução local de `python -m unittest discover -s tests -v`: `Ran 84 tests in 3.687s`, `OK`. Não foi fornecido hash/commit desta versão; arquivos ainda não commitados.

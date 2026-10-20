@@ -147,7 +147,9 @@ def executar(entrada, politica, cambio):
                     convertido = quant(valor * taxa)
                 item['valor_convertido'] = convertido
                 resumo['total_original_convertido'] += convertido
-            except (InvalidOperation, OverflowError, MemoryError): adicionar(item, 'ENTRADA_INVALIDA')
+            except (InvalidOperation, OverflowError, MemoryError):
+                adicionar(item, 'ENTRADA_INVALIDA')
+                resumo['totais_completos'] = False
         else:
             resumo['totais_completos'] = False
         if erros:
@@ -174,12 +176,13 @@ def executar(entrada, politica, cambio):
                     if not item['motivos']:
                         valor_brl = item['valor_convertido']
                         limites = []
-                        if regra['periodicidade'] in ('dia','diaria'):
-                            limite_dia = regra['limite']
-                            if centro == 'CC-COMERCIAL' and categoria == 'representacao': limite_dia = min(limite_dia, Decimal(300))
+                        if regra['periodicidade'] in ('dia', 'diaria') or (centro == 'CC-COMERCIAL' and categoria == 'representacao'):
+                            limite_dia = regra['limite'] if regra['periodicidade'] in ('dia', 'diaria') else Decimal(300)
+                            if centro == 'CC-COMERCIAL' and categoria == 'representacao':
+                                limite_dia = min(limite_dia, Decimal(300))
                             chave = (categoria, d['data'])
-                            saldo = max(ZERO, limite_dia - saldos_dia.get(chave,ZERO))
-                            limites.append(('LIMITE_DIARIO',saldo,chave))
+                            saldo = max(ZERO, limite_dia - saldos_dia.get(chave, ZERO))
+                            limites.append(('LIMITE_DIARIO', saldo, chave))
                         if regra['periodicidade'] == 'mes':
                             chave = (categoria,d['data'][:7]); saldo = max(ZERO,regra['limite'] - saldos_mes.get(chave,ZERO))
                             limites.append(('LIMITE_MENSAL',saldo,chave))
