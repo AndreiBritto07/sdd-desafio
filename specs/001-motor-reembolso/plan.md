@@ -24,7 +24,13 @@ Os quatro argumentos são obrigatórios. Não há descoberta automática de pol�
 4. Executar testes preexistentes, se houver, e registrar comando, data e resultado. Se não houver suíte, registrar sua ausência.
 5. Escolher stack compatível com parser que preserve lexemas numéricos e suporte decimal exato; registrar escolha técnica sem mudar regras de negócio.
 
-**Saída da T-001:** inventário de arquivos, schemas observados, stack, comando de execução e estado-base reproduzível.
+**Observações preliminares já compartilhadas (não revalidadas nesta Fase 2):** capturas de terminal indicaram Python 3.11.0, Node.js 22.13.1, `CLAUDE.md` vazio, ausência de `src/` e `tests/`, e quatro fixtures do Envelope 2 com JSON sintaticamente válido. O comando `python -m unittest discover -s tests -v` apresentou erro de descoberta por ausência da pasta, **não** falha de teste funcional. Não há, neste registro, commit-base e saídas completas reproduzidas; verificar novamente antes de concluir T-001.
+
+**Campos preliminarmente observados na política:** `versao` (texto), `vigencia` (data textual), `moeda_base` (texto), `padrao` (objeto por categoria), `centros_custo` (objeto por centro e categoria), `nota_fiscal_obrigatoria_acima_de` (número) e `acrescimo_em_viagem_percentual` (número). Nas regras por categoria foram observados `limite` (número), `periodicidade` (texto, exemplos `dia` e `diaria`) e `observacao` (texto em exemplo específico). Essas observações não comprovam obrigatoriedade ou permissão de campos adicionais.
+
+**Campos preliminarmente observados no câmbio:** `moeda_base` (texto), `fonte` (texto), `observacao` (texto) e `taxas` (objeto por data `YYYY-MM-DD`, com objetos por moeda como `USD` e `EUR` e valores numéricos). O schema integral, incluindo obrigatoriedade e proibição de campos, permanece a conferir nos arquivos originais.
+
+**Saída da T-001:** inventário de arquivos, schemas efetivamente verificados, stack aprovada, comando de execução proposto ou existente e estado-base reproduzível, registrados em `docs/evidencias/T-001-baseline.md`. A escolha de Python 3.11 + `decimal.Decimal` + `unittest` é **recomendação**, não decisão técnica aprovada nem implementação existente.
 
 ## 4. Arquitetura lógica proposta
 
@@ -88,8 +94,9 @@ Para cada tarefa: alteração focada, testes relacionados, comando e saída regi
 
 - [x] Contrato dos quatro argumentos definido documentalmente.
 - [x] Escopo dos erros esclarecido documentalmente.
-- [ ] T-001 concluída com schemas e stack verificados.
-- [ ] Fixtures válidas criadas a partir dos schemas inspecionados.
-- [ ] Testes iniciais executados e resultados registrados.
+- [ ] T-001 concluída com inventário, schemas, stack e baseline registrados com evidências reproduzíveis.
+- [ ] Stack proposta na T-001 aprovada e forma executável da CLI definida antes da implementação.
+
+**Marcos posteriores, não pré-requisitos para encerrar a T-001:** criação de fixtures mínimas na T-002 e execução dos primeiros testes implementados. A T-001 exige apenas executar a suíte **preexistente, se houver**, ou registrar comprovadamente sua ausência; não exige testes que serão criados em tarefas futuras.
 
 Este plano não equivale à conclusão das tarefas nem à aprovação da especificação.

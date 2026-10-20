@@ -30,7 +30,7 @@ Para tarefas financeiras, implementar primeiro os fundamentos necessários: pol�
 
 - Ação: identificar linguagem, módulos, CLI, testes, exemplos e schemas originais de politica-v4.json e cambio.json; executar a suíte-base.
 - Referências: RN-017/019/020; preparação para todos os ACs.
-- Aceite: registrar caminhos reais, comandos, estrutura dos arquivos externos e resultado-base; reproduzir eventuais falhas preexistentes.
+- Aceite: registrar caminhos reais, comandos, estrutura dos arquivos externos e resultado-base; reproduzir eventuais falhas preexistentes. Produzir `docs/evidencias/T-001-baseline.md` com data, branch, commit-base, estado do Git, ambiente, comandos e saídas relevantes, schemas efetivamente verificados, fixtures, stack proposta/aprovada e estado da suíte. A ausência de `tests/` deve ser registrada como ausência de suíte, não como falha funcional. Não concluir T-001 com base apenas em capturas anteriores ou em `python -m json.tool`.
 
 ### T-002 — Criar fixtures mínimas reutilizáveis
 
@@ -332,7 +332,8 @@ Uma implementação entregue exige T-047 concluída. Esta revisão documental n�
 
 ## Pendências atuais
 
-- Inspecionar repositório, schemas externos e suíte.
+- Reproduzir a inspeção local de repositório, schemas externos e suíte e registrar a evidência em `docs/evidencias/T-001-baseline.md`; capturas anteriores não equivalem à conclusão da T-001.
+- Validar integralmente os schemas externos antes de criar fixtures/leitores; não inferir campos não inspecionados.
 - Implementar o contrato consolidado.
 - Recalcular a fixture original.
 - Executar testes e registrar evidências.

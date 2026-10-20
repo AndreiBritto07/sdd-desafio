@@ -45,7 +45,7 @@ Os limites mensais consideram as despesas do lote processado. Sem histórico ext
 
 Não manter dois modos implícitos, um anterior e outro posterior ao Envelope 2.
 
-Os schemas físicos de politica-v4.json e cambio.json devem ser conferidos nos arquivos originais antes da implementação dos leitores. Esta especificação não inventa seus nomes internos de campos. Os caminhos desses arquivos são informados obrigatoriamente pela CLI conforme RN-017.
+Os schemas físicos de `politica-v4.json` e `cambio.json` devem ser conferidos integralmente nos arquivos originais antes da implementação dos leitores. A inspeção visual anterior identificou, de forma preliminar, `versao`, `vigencia`, `moeda_base`, `padrao`, `centros_custo`, `nota_fiscal_obrigatoria_acima_de` e `acrescimo_em_viagem_percentual` na política, bem como `moeda_base`, `fonte`, `observacao` e `taxas` no câmbio. Esses nomes são observações técnicas, **não** uma definição exaustiva de schema, nem evidência de validação integral. Os caminhos são informados obrigatoriamente pelos argumentos `--politica` e `--cambio`, conforme RN-017.
 
 ## 4. Entrada
 
@@ -506,7 +506,7 @@ Invariantes:
 
 ### RN-019 — Política externa e exceções
 
-Ler exclusivamente politica-v4.json.
+Ler exclusivamente o arquivo de política indicado por `--politica` (fixture do Envelope 2: `politica-v4.json`).
 
 Arquivo ausente, ilegível, JSON inválido, chaves repetidas ou estrutura obrigatória inválida: POLITICA_INVALIDA, sem resultado financeiro.
 
@@ -534,7 +534,7 @@ Para CC-ENG-PLATAFORMA/hospedagem:
 
 ### RN-020 — Validação do câmbio
 
-Ler exclusivamente cambio.json.
+Ler exclusivamente o arquivo de câmbio indicado por `--cambio` (fixture do Envelope 2: `cambio.json`).
 
 Arquivo ausente, ilegível, vazio, JSON inválido, chaves repetidas, estrutura inválida ou qualquer cotação inválida: CAMBIO_INVALIDO.
 
@@ -788,9 +788,9 @@ tasks.md mantém tarefas pequenas, critérios verificáveis e nenhuma conclusão
 
 ## 11. Pendências reais
 
-- Conferir os schemas originais de politica-v4.json e cambio.json.
-- Inspecionar a implementação e a suíte existentes.
-- Confirmar os caminhos/argumentos reais dos arquivos externos na CLI.
+- Conferir integralmente os schemas originais de `politica-v4.json` e `cambio.json`; os campos observados em capturas de terminal ainda não constituem validação semântica completa.
+- Reproduzir e registrar o inventário local e a ausência ou presença de implementação e suíte, vinculando comandos, resultados e commit-base à T-001.
+- Definir a forma executável concreta da CLI e comprovar o uso dos quatro argumentos obrigatórios já decididos em RN-017; **não** há pendência de decisão sobre nomes ou obrigatoriedade desses argumentos.
 - Implementar o contrato consolidado.
 - Executar testes e recalcular a fixture original.
 - Registrar evidências antes de marcar ACs ou tarefas como concluídos.

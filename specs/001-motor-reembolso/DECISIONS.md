@@ -292,11 +292,16 @@ Não implementar como alternativas vigentes:
 
 ## 7. Pendências e evidências
 
-Pendências técnicas:
+### REV-DOC-2026-10-20 — Sincronização documental da Fase 2
 
-- Conferir schemas originais da política e do câmbio e registrar campos reais antes de implementar leitores.
-- Inspecionar CLI e suíte reais.
-- Implementar e executar testes.
+**Natureza:** registro de manutenção documental, **não** nova decisão de negócio. Autorizadas as correções AUD-01 a AUD-08, preservando RN, AC, T e CONS vigentes. Os campos de política e câmbio identificados anteriormente em capturas de terminal são evidência preliminar, não validação exaustiva. A T-001 permanece aberta até inventário, schemas, stack e baseline reproduzíveis. As correções de critérios e dependências foram refletidas em `spec.md`, `plan.md` e `tasks.md`; não se alterou o contrato financeiro.
+
+### Pendências técnicas
+
+- Concluir a inspeção integral dos arquivos originais de política e câmbio: capturas anteriores permitiram identificar campos principais, mas não comprovam schema completo nem validade semântica.
+- Reproduzir o diagnóstico local da CLI e da suíte na T-001, com comandos, resultados, branch e commit-base; observações anteriores indicaram ausência de `src/` e `tests/`, sem comprovar a situação atual do repositório.
+- Definir a forma executável da CLI após aprovação da stack; os quatro argumentos obrigatórios já estão decididos em CONS-008.
+- Implementar e executar testes; preencher a matriz AC/RN/T somente com evidências reais.
 - Registrar resultados e atualizar rastreabilidade.
 
 Nenhum teste foi declarado aprovado por esta revisão documental.
