@@ -434,7 +434,7 @@ Para tarefas financeiras, implementar primeiro os fundamentos necessários: pol�
 
 ## Matriz de execução dos critérios de aceite
 
-Os 36 critérios AC-001 a AC-036 ainda devem ser rastreados individualmente na implementação por: `AC | RN | T | arquivo::teste | comando | resultado | evidência/commit`. Os nomes de testes previstos nas tarefas são hipóteses de planejamento, não testes já existentes. A suíte geral foi executada com 16 testes aprovados; para cada AC sem evidência específica, registrar **COBERTURA NÃO COMPROVADA**, não `APROVADO`. T-030 e T-045 devem completar os vínculos com caminhos reais; T-047 só poderá ser concluída após execução e evidências.
+Os 36 critérios AC-001 a AC-036 ainda devem ser rastreados individualmente na implementação por: `AC | RN | T | arquivo::teste | comando | resultado | evidência/commit`. Os nomes de testes previstos nas tarefas são hipóteses de planejamento, não testes já existentes. A suíte geral foi executada mais recentemente com 35 testes aprovados; para cada AC sem evidência específica, registrar **COBERTURA NÃO COMPROVADA**, não `APROVADO`. T-030 e T-045 devem completar os vínculos com caminhos reais; T-047 só poderá ser concluída após execução e evidências.
 
 ## Definição de pronto
 
@@ -487,3 +487,26 @@ Os commits observados incluem `6ee59ee` (validação global), `2789c78` (motor e
 **Importante:** não alterar retroativamente os critérios de aceite propostos nas T-001 a T-047. Um teste aprovado não comprova automaticamente todos os critérios associados a uma tarefa. A T-047 permanece **pendente** até o mapeamento verificável de AC-001 a AC-036.
 
 A tabela histórica acima contém o marco inicial de 3 testes da T-002; o estado mais recente e prevalente é o desta atualização.
+
+
+
+## Atualização de execução — 35 testes (20/10/2026)
+
+O responsável executou `python -m unittest discover -s tests -v` e informou `Ran 35 tests in 1.373s`, `OK`: **35 aprovados, zero falhas, zero ignorados**. Preservam-se os marcos históricos de 3, 16 e 25 testes, sem substituí-los retroativamente.
+
+Dez testes complementares aprovados constam em `tests/test_criterios_complementares.py`:
+
+| Teste real | Critério(s) exercitado(s) |
+|---|---|
+| `test_ac001_limite_diario_na_ordem_72_50_e_38` | AC-001 |
+| `test_ac002_ordem_invertida_38_e_72_50` | AC-002 |
+| `test_ac007_id_repetido_e_identificacao` | AC-007 (ID repetido) |
+| `test_ac017_cli_sucesso_e_erro_global` | AC-017 (sucesso e erro global) |
+| `test_ac024_moeda_minuscula_invalida` | AC-024 (moeda minúscula) |
+| `test_ac024_moeda_omitida_usa_brl` | AC-024 (moeda omitida) |
+| `test_ac026_arredondamento_meio_para_cima` | AC-026 (half-up) |
+| `test_ac030_sem_cotacao_nao_gera_reembolso` | AC-030 (ausência de cotação) |
+| `test_ac033_centro_desconhecido_usa_politica_padrao` | AC-033 (fallback) |
+| `test_ac035_hospedagem_proibida_para_engenharia` | AC-035 (proibição) |
+
+**Estado:** evidências complementares aprovadas, sem declarar integralmente concluídas T-001 a T-047. Em particular, T-027/T-028 requerem os demais cenários da CLI, T-035/T-036 requerem a rejeição de cotação em notação científica e T-030/T-045/T-047 requerem a matriz completa AC/RN/T/teste/resultado/evidência. O arquivo `tests/test_criterios_complementares.py` deve ser incluído no commit se ainda estiver apenas no ambiente local.

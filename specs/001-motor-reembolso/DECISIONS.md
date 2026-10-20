@@ -2,7 +2,7 @@
 
 **Revisão documental:** 20/10/2026 — consolidação pós-Envelope 2  
 **Relacionamento:** sustenta spec.md v0.2 e tasks.md desta revisão.  
-**Estado:** decisões normativas consolidadas; implementação e 16 testes aprovados observados em 20/10/2026, sem aprovação externa ou cobertura integral presumidas.
+**Estado:** decisões normativas consolidadas; implementação e 35 testes aprovados na execução mais recente informada em 20/10/2026, sem aprovação externa ou cobertura integral presumidas.
 
 O versionamento deste registro é independente da versão da especificação.
 
@@ -313,3 +313,10 @@ Nenhuma pendência técnica autoriza reabrir silenciosamente decisões já tomad
 A execução observada incluiu a CLI Python (`python -m src calcular`) com os quatro caminhos explícitos, a geração do resultado do Envelope 2 e a suíte `python -m unittest discover -s tests -v`, com `Ran 16 tests` e `OK`, sem testes ignorados na última rodada. O commit `aa39da2` documenta instruções técnicas em `CLAUDE.md`; o commit `b3aaeff` adicionou exemplos oficiais do Envelope 2.
 
 Esta nota atualiza somente o **estado de execução**. Todas as decisões AMB, E2 e CONS permanecem vigentes. Os testes não demonstram, por si, cobertura integral de AC-001 a AC-036.
+
+
+### REV-EXEC-35-2026-10-20 — Evidência adicional, sem nova decisão de negócio
+
+O responsável informou a execução de `python -m unittest discover -s tests -v` com `Ran 35 tests in 1.373s` e `OK`, sem falhas nem testes ignorados. Dez testes complementares foram adicionados em `tests/test_criterios_complementares.py`. O teste de CLI inicialmente falhou por serialização incorreta de números na fixture de teste, corrigida antes da execução bem-sucedida. O marco anterior de 16 testes permanece como registro histórico; houve também execução intermediária de 25 testes.
+
+A inspeção assistida de `src/motor.py`, `src/validacao_global.py` e `src/__main__.py` não equivale a aceite formal dos 36 ACs. Requer atenção específica a RN-020/AC-023 (notação científica de cotações) e ao conjunto completo de AC-017. Nenhuma decisão AMB, E2 ou CONS foi alterada por esta atualização.

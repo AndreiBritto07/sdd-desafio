@@ -16,7 +16,7 @@ As regras e decisões foram aprovadas pelo responsável. O ChatGPT auxiliou na a
 | Especificação | Revisões de `spec.md` com decisões aprovadas pelo responsável |
 | Arquitetura | Python 3.11, `decimal.Decimal`, `unittest`, `argparse`; `plan.md` e `docs/evidencias/T-001-baseline.md` |
 | Implementação | Código em `src/`, commit `2789c78`, integrado pelo responsável com assistência de IA |
-| Testes | Suíte em `tests/`, executada localmente; última execução confirmada pelo responsável: **25 testes, `OK`, sem falhas** |
+| Testes | Suíte em `tests/`, executada localmente; última execução confirmada pelo responsável: **35 testes, `OK`, sem falhas nem testes ignorados** |
 | Envelope 2 | Regras nos documentos, quatro exemplos em `exemplos/envelope/`, commit `b3aaeff` |
 
 **Onde deleguei e me arrependi / onde deveria ter delegado:** requer relato pessoal do responsável; não é inferível de commits.
@@ -49,12 +49,12 @@ As regras e decisões foram aprovadas pelo responsável. O ChatGPT auxiliou na a
 - Verificações selecionadas de parsing estrito, chaves repetidas e campos da política/câmbio.
 - Uso de `git diff --cached --check` antes de commits; houve alerta de espaços finais em `docs/evidencias/cc-desconhecido.md`, corrigido antes do commit posterior.
 - Execução de `python -m src calcular` com os quatro argumentos obrigatórios, incluindo exemplo oficial e centro de custo desconhecido.
-- Execução mais recente de `python -m unittest discover -s tests -v`, **confirmada pelo responsável em 20/10/2026**: **25 testes executados, resultado `OK`, sem falhas**. O total anterior era de 16 testes; foram adicionados 9 testes automatizados de auditoria financeira. Não foi fornecido neste registro o log integral da nova execução nem contagem independente de testes ignorados.
+- Execução mais recente de `python -m unittest discover -s tests -v`, **confirmada pelo responsável em 20/10/2026**: **35 testes executados, resultado `OK`, sem falhas nem testes ignorados**, em 1,373 s. O histórico foi de 16, depois 25 e agora 35 testes; os dez testes complementares foram aprovados na execução mais recente.
 - Última verificação de `git status --short` mostrada antes da geração temporária do resultado da CLI: sem alterações pendentes. Após gerar `resultado-envelope.json`, o status precisa ser conferido novamente.
 
 **Porcentagem de diffs integralmente revisados:** não medida.
 
-**Limitação:** 25 testes aprovados não comprovam cobertura integral de AC-001 a AC-036. Os 9 testes adicionais exercitam cenários relacionados a AC-004, AC-023, AC-028, AC-029, AC-031, AC-034 e AC-036; a matriz de rastreabilidade ainda requer conferência específica de cada cenário normativo. Os testes foram preparados com assistência de IA; sua qualidade exige revisão independente das expectativas.
+**Limitação:** 35 testes aprovados não comprovam cobertura integral de AC-001 a AC-036. Os 9 testes adicionais exercitam cenários relacionados a AC-004, AC-023, AC-028, AC-029, AC-031, AC-034 e AC-036; a matriz de rastreabilidade ainda requer conferência específica de cada cenário normativo. Os testes foram preparados com assistência de IA; sua qualidade exige revisão independente das expectativas.
 
 ## O Envelope 2
 
@@ -70,7 +70,8 @@ As regras e decisões foram aprovadas pelo responsável. O ChatGPT auxiliou na a
 - `tests/test_motor_integrado.py` — cenários selecionados do motor.
 - `tests/test_contrato_saida.py` — saída e formatação monetária.
 - `tests/test_auditoria_financeira.py` — **9 testes adicionais**: nota fiscal no limite de R$ 100,00 e acima dele; preservação de saldo; câmbio inválido e chave duplicada; limite mensal; reconciliação de totais; teto de representação comercial com política de R$ 200,00 e R$ 500,00; e distinção de despesas em moedas diferentes.
-- Suíte consolidada: **25 testes aprovados, sem falhas**, conforme confirmação do responsável após os commits dos testes adicionais.
+- `tests/test_criterios_complementares.py` — **10 testes complementares**: limites diários em duas ordens, ID repetido, CLI, moeda padrão/inválida, arredondamento half-up, falta de cotação, fallback de centro de custo e hospedagem proibida.
+- Suíte consolidada: **35 testes aprovados, zero falhas e zero ignorados**, conforme saída integral fornecida pelo responsável (`Ran 35 tests in 1.373s`, `OK`).
 - `docs/evidencias/cc-desconhecido.md` — cenário de fallback.
 - `exemplos/envelope/` — quatro JSONs oficiais versionados.
 
@@ -92,6 +93,7 @@ As regras e decisões foram aprovadas pelo responsável. O ChatGPT auxiliou na a
 | README e relatório | `0b6bd46` |
 | Testes com exemplos oficiais | `b3aaeff` |
 | Testes adicionais de auditoria financeira (9 cenários) | Commit realizado e informado pelo responsável; hash ainda não fornecido |
+| Testes complementares (10 cenários) | Execução local comprovada; hash do commit ainda não informado |
 | Reserva de diretório de sessões | `01cbc34` |
 | Instruções `CLAUDE.md` | `aa39da2` |
 
@@ -109,8 +111,17 @@ Hashes abreviados foram observados no histórico compartilhado; confirmar os com
 
 ## Pendências verificáveis antes da entrega
 
-1. Conferir se `spec.md`, `plan.md` e `tasks.md` refletem os 25 testes e a implementação atual, sem marcar cobertura não comprovada.
-2. Conferir a matriz AC-001 a AC-036 versus os 25 testes efetivos; registrar os cenários ainda sem evidência específica.
+1. Conferir se `spec.md`, `plan.md` e `tasks.md` refletem os 35 testes e a implementação atual, sem marcar cobertura não comprovada.
+2. Conferir a matriz AC-001 a AC-036 versus os 35 testes efetivos; registrar os cenários ainda sem evidência específica.
 3. Confirmar o status do Git e registrar o hash do commit dos 9 testes adicionais; remover o JSON temporário se não for artefato de entrega.
 4. Completar apenas com fatos pessoais verificáveis os relatos de delegação, arrependimento, ferramentas e revisão de diffs.
 5. Registrar sessões **reais** somente se existirem. `.gitkeep` não é evidência de sessão.
+
+
+## Registro complementar — suíte de 35 testes (20/10/2026)
+
+**Comando executado pelo responsável:** `python -m unittest discover -s tests -v`. **Resultado informado:** `Ran 35 tests in 1.373s`, `OK`, sem falhas ou skips. Foram acrescentados dez testes complementares em `tests/test_criterios_complementares.py`; o primeiro ensaio do teste AC-017 falhou por uma fixture que serializava números como strings. Corrigida a fixture, a suíte completa passou. Esse episódio não demonstra defeito no motor.
+
+**Inspeção assistida:** `src/motor.py`, `src/validacao_global.py` e `src/__main__.py` foram examinados; isso não substitui teste de aceitação. Ainda não está demonstrada a cobertura integral dos 36 ACs, especialmente todos os subcasos de AC-017 e a rejeição de notação científica em cotações exigida por RN-020/AC-023. Não foram apresentados nesta rodada novo `git status`, hash do commit dos dez testes nem validação independente da matriz completa.
+
+**Transparência:** os testes foram preparados com assistência de ChatGPT e executados pelo responsável. Não atribuir execução ao Claude Code, sessões exportadas, revisão integral de diffs ou validação externa sem evidência.

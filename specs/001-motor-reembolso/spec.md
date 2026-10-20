@@ -2,7 +2,7 @@
 
 **Versão:** 0.2  
 **Revisão documental:** 20/10/2026 — consolidação pós-Envelope 2  
-**Estado:** contrato normativo consolidado; implementação Python e CLI existentes, com 16 testes aprovados na última execução observada (20/10/2026). Cobertura integral de AC-001 a AC-036 ainda não demonstrada.
+**Estado:** contrato normativo consolidado; implementação Python e CLI existentes, com 35 testes aprovados na execução mais recente informada (20/10/2026). Cobertura integral de AC-001 a AC-036 ainda não demonstrada.
 
 Esta versão incorpora as decisões da revisão e do Envelope 2 em um único contrato. As regras antigas substituídas estão identificadas em DECISIONS.md e não constituem comportamento alternativo.
 
@@ -467,13 +467,13 @@ A diferença entre total_original_convertido e total_reembolsavel não deve ser 
 
 ### RN-017 — CLI e determinismo
 
-Contrato obrigatório para a implementação (ainda não declarado como executável):
+Contrato obrigatório para a implementação (forma executável Python já observada):
 
 ```bash
 calcular --input entrada.json --output resultado.json --politica politica-v4.json --cambio cambio.json
 ```
 
-Os quatro argumentos `--input`, `--output`, `--politica` e `--cambio` são obrigatórios e recebem caminhos de arquivos. Não há descoberta automática, fallback de caminhos ou política/câmbio embutidos. Ausência de argumento obrigatório é erro global de uso, com saída 2 e sem resultado financeiro. A sintaxe de invocação executável (binário, módulo ou script) deve ser documentada após escolha da stack, preservando os quatro argumentos. A inspeção da T-001 deve confirmar como adaptar a implementação existente, se houver, sem revogar este contrato.
+Os quatro argumentos `--input`, `--output`, `--politica` e `--cambio` são obrigatórios e recebem caminhos de arquivos. Não há descoberta automática, fallback de caminhos ou política/câmbio embutidos. Ausência de argumento obrigatório é erro global de uso, com saída 2 e sem resultado financeiro. A invocação implementada e observada é `python -m src calcular`, preservando os quatro argumentos obrigatórios. A verificação de todos os códigos de saída e cenários de I/O continua sujeita à rastreabilidade de AC-017.
 
 Códigos de saída:
 
@@ -790,8 +790,8 @@ tasks.md mantém tarefas pequenas, critérios verificáveis e nenhuma conclusão
 
 - Conferir integralmente os schemas originais de `politica-v4.json` e `cambio.json`; os campos observados em capturas de terminal ainda não constituem validação semântica completa.
 - Reproduzir e registrar o inventário local e a ausência ou presença de implementação e suíte, vinculando comandos, resultados e commit-base à T-001.
-- Definir a forma executável concreta da CLI e comprovar o uso dos quatro argumentos obrigatórios já decididos em RN-017; **não** há pendência de decisão sobre nomes ou obrigatoriedade desses argumentos.
-- Implementar o contrato consolidado.
+- A CLI executável `python -m src calcular` já foi observada com os quatro argumentos obrigatórios; conferir os demais casos de AC-017, inclusive falhas de I/O e argumento ausente.
+- Auditar a implementação existente do contrato consolidado contra todos os critérios, incluindo cenários de borda ainda sem teste específico.
 - Executar testes e recalcular a fixture original.
 - Registrar evidências antes de marcar ACs ou tarefas como concluídos.
 
@@ -802,3 +802,10 @@ Não há pendência de decisão sobre período global inválido ou sobre o teto 
 A execução local demonstrada utilizou `python -m src calcular` com `--input`, `--output`, `--politica` e `--cambio`, usando os arquivos oficiais em `exemplos/envelope/`. Após gerar `resultado-envelope.json`, o comando `python -m unittest discover -s tests -v` apresentou `Ran 16 tests` e `OK`, sem skips ou falhas na última captura.
 
 Este registro não modifica RN-001 a RN-026 nem AC-001 a AC-036. A correspondência integral entre os 36 critérios, os testes executados e suas evidências ainda requer matriz de rastreabilidade. A existência de implementação não equivale à comprovação de todas as regras em todos os casos de borda.
+
+
+## Registro complementar de execução — 20/10/2026 (não normativo)
+
+Após os marcos históricos de 16 e 25 testes, o responsável executou `python -m unittest discover -s tests -v` e informou `Ran 35 tests in 1.373s` e `OK`, com 35 testes aprovados, zero falhas e zero ignorados. A suíte inclui dez testes em `tests/test_criterios_complementares.py`, que exercitam cenários de AC-001, AC-002, AC-007, AC-017, AC-024, AC-026, AC-030, AC-033 e AC-035. O primeiro teste complementar de CLI falhou por um problema na fixture do teste, que foi corrigido; a nova execução completa passou.
+
+Este registro não modifica RN-001 a RN-026, AC-001 a AC-036 nem decisões vigentes. Ainda falta uma matriz de cobertura integral com todos os cenários normativos, inclusive cotação em notação científica (RN-020/AC-023) e caminhos de erro operacional da CLI (RN-017/AC-017).
