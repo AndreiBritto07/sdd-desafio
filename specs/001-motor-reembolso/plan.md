@@ -1,115 +1,134 @@
-# plans.md — Plano de execução do motor de cálculo de reembolso
+# Plano de execução: motor de reembolso
 
-**Base:** `spec.md` v0.2 (proposta) e `DECISIONS.md`  
-**Status:** planejamento; decisões ainda pendentes de aprovação oficial.  
-**Data:** 20/10/2026
+**Versão:** 0.2 · **Data:** 2026-10-20
+**Base:** `spec.md` v0.2 e `DECISIONS.md` v0.2, ambos propostos.
+**Backlog:** `tasks.md` (T-001 a T-033).
 
 ## Objetivo
 
-Transformar a especificação proposta em uma implementação determinística, testável e rastreável, sem assumir requisitos ainda não definidos. A execução deve preservar a separação entre erros de lote e erros de item, permitir reconciliar os totais e produzir explicações para cada decisão.
+Transformar a especificação em uma implementação determinística, testável e rastreável, sem assumir requisitos não aprovados.
 
-## Premissas e restrições
+## Premissas
 
-- `spec.md` v0.2 continua sendo uma proposta, não uma aprovação oficial.
-- A mudança de requisito do Dia 2 ainda não foi recebida; revisar regras, testes e documentação afetados quando chegar.
-- A correção 69, sobre competência/datas inválidas além da inversão de datas válidas, está em aberto. Não implementar comportamento definitivo para esses casos antes da decisão.
-- A estrutura e a linguagem do projeto, a localização dos testes e os comandos reais devem ser confirmados inspecionando o repositório; não presumir caminhos ou tecnologias.
-- Não afirmar que testes passaram sem executá-los e registrar o resultado.
+- `spec.md` e `DECISIONS.md` são propostas. A aprovação formal é pré-requisito para dar o plano como concluído.
+- A correção 69 bloqueia apenas a competência ausente ou inválida e as datas inexistentes em `periodo` (parte de T-015). A comparação inclusiva (T-015) e a inversão de datas válidas (T-014) já estão decididas.
+- Linguagem, estrutura de código, localização dos testes e comandos reais devem ser confirmados inspecionando o repositório. Não presumir caminhos nem tecnologias.
+- Nenhum teste é marcado como aprovado sem execução registrada.
+- O repositório pode conter apenas documentação, exemplos e templates. Verificar antes de planejar a implementação.
 
 ## Fases
 
-### Fase 1 — Fechar decisões e estabelecer a baseline
+### Fase 1: Fechar decisões
 
-1. Resolver a correção 69.
-2. Verificar se existem outras correções não resolvidas no `spec.md` e no `DECISIONS.md`.
-3. Receber o requisito do Dia 2 quando disponível e analisar impacto.
-4. Confirmar qual versão da especificação será submetida à aprovação oficial.
+1. Decidir a correção 69 (bloqueio da parte de T-015 que trata competência ausente ou inválida).
+2. Aprovar ou ajustar as correções 70 a 75.
+3. Receber o requisito do Dia 2 e analisar o impacto.
+4. Confirmar a versão de `spec.md` que será submetida à aprovação.
 
-**Saída:** lista de decisões fechadas, pendências explícitas e baseline de requisitos aprovada para implementação.
+**Saída:** decisões fechadas, pendências explícitas e baseline de requisitos.
 
-### Fase 2 — Inspecionar o repositório
+### Fase 2: Inspecionar o repositório
 
-1. Examinar a árvore de arquivos, instruções do projeto, linguagem, dependências e comandos existentes.
-2. Localizar a implementação do motor, a CLI, os testes e os dados de exemplo.
-3. Executar a suíte existente sem alterações e registrar resultados como baseline.
-4. Comparar implementação e testes com `spec.md` e identificar lacunas, conflitos e regressões potenciais.
+1. Examinar a árvore de arquivos, `CLAUDE.md`, linguagem, dependências e comandos existentes.
+2. Verificar se existem implementação do motor, CLI, testes e dados de exemplo (`exemplos/`). Se não existirem, registrar.
+3. Executar a suíte existente, se houver, sem alterações, e registrar o resultado (T-001).
+4. Comparar o estado atual com a spec e listar lacunas e conflitos.
 
-**Saída:** relatório curto de estado atual, comandos reproduzíveis e lista de arquivos que provavelmente precisarão de mudança.
+**Saída:** relatório de estado, comandos reproduzíveis e lista de arquivos a alterar.
 
-### Fase 3 — Desenhar contrato e validação
+### Fase 3: Contrato de entrada
 
-1. Documentar o formato de entrada e os esquemas de sucesso/erro.
-2. Implementar parsing JSON que detecte chaves repetidas em qualquer objeto e rejeite o lote com `JSON_INVALIDO` sem resultado financeiro parcial.
-3. Validar envelope e campos obrigatórios de `colaborador`; erro causa `ENTRADA_INVALIDA` para o lote inteiro.
-4. Validar cada despesa em ordem fixa, registrando todos os erros estruturais de forma determinística.
-5. Ignorar campos extras conforme a especificação.
-6. Tratar IDs ausentes, inválidos, repetidos e gerados segundo as regras documentadas.
+Cobre T-002 a T-007.
 
-**Saída:** contrato de entrada e saída implementado com testes unitários de validação.
+1. Parser JSON estrito, com chaves repetidas (T-003).
+2. Envelope e colaborador, com `ENTRADA_INVALIDA` (T-004).
+3. Chaves exatas, campos extras e booleano (T-005).
+4. Validação estrutural de despesas, com erros em ordem fixa (T-006).
+5. Despesa inválida mantida em `items` e fora do resumo (T-007).
 
-### Fase 4 — Implementar cálculo e precedência
+**Saída:** contrato de entrada com testes unitários.
 
-1. Normalizar categoria e valores conforme as regras.
-2. Validar período e competência somente conforme decisões fechadas; manter bloqueada a parte da correção 69 ainda não decidida.
-3. Identificar duplicatas por ID antes da deduplicação por conteúdo.
-4. Para conteúdo, comparar data e categoria normalizadas, fornecedor/descrição com NFC, trim ASCII externo e comparação sem diferença de caixa, e valor arredondado a duas casas; ignorar indicador fiscal e campos extras.
-5. Aplicar motivos, avisos, limites e precedência em uma ordem explícita.
-6. Garantir que itens inválidos permaneçam em `items`, mas não entrem em `total_itens`, contagens nem totais financeiros.
-7. Garantir invariantes dos totais e que nenhum reembolso seja negativo ou superior ao valor solicitado.
+### Fase 4: Identificadores
 
-**Saída:** cálculo de negócio coberto por testes unitários e casos de fronteira.
+Cobre T-008 a T-010.
 
-### Fase 5 — CLI e erros operacionais
+1. Geração de ID ausente, com índice original (T-008).
+2. Colisões de IDs gerados, com sufixos (T-009).
+3. ID repetido como motivo `ID_REPETIDO` e normalização de comparação (T-010).
 
-1. Implementar ou ajustar `calcular --input <arquivo> --output <arquivo>` conforme a CLI existente.
-2. Confirmar códigos de saída: `0` sucesso, `2` entrada/lote inválido, `3` erro de I/O.
-3. Manter logs fora do JSON de resultado.
-4. Verificar comportamento de arquivos inexistentes, leitura/escrita e ausência de saída parcial em falha de lote.
-5. Confirmar determinismo: mesma entrada produz a mesma saída financeira.
+**Saída:** IDs determinísticos com testes de colisão e repetição.
 
-**Saída:** testes de integração/CLI com comandos reproduzíveis.
+### Fase 5: Cálculo e precedência
 
-### Fase 6 — Testes, exemplos e rastreabilidade
+Cobre T-011 a T-023.
 
-1. Associar cada AC a um identificador de teste real, usando a estrutura encontrada no repositório.
-2. Criar casos automatizados para AC-001 a AC-021 e os casos de borda aplicáveis.
-3. Cobrir explicitamente chaves JSON repetidas, colaborador incompleto, IDs gerados/colididos/inválidos/repetidos, duplicatas, arredondamento, datas invertidas e invariantes de totais.
-4. Recalcular exemplos de entrada/saída por execução real, comparar com os valores documentados e corrigir discrepâncias.
-5. Atualizar a matriz AMB → RN → AC → teste; registrar “sem relação direta” quando aplicável.
-6. Marcar testes como validados somente após execução aprovada.
+1. Arredondamento half-up e valores zero ou negativos (T-011, T-013).
+2. Normalização de categoria (T-012).
+3. Período: inversão (T-014) e competência inclusiva (T-015, sujeita à correção 69 nos casos indicados).
+4. Deduplicação por conteúdo e canônico (T-016, T-017).
+5. Precedência de motivos (T-018), nota fiscal (T-019), dias civis e categoria (T-020).
+6. Limites diários (T-021), viagem (T-022) e diárias de hospedagem (T-023).
 
-**Saída:** suíte executada, resultados documentados e rastreabilidade completa.
+**Saída:** cálculo coberto por testes unitários e casos de fronteira.
 
-### Fase 7 — Revisão e entrega
+### Fase 6: Saída e totais
 
-1. Rodar formatter, linter, análise estática e suíte de testes disponíveis no projeto.
-2. Revisar diff para detectar alterações fora de escopo, requisitos inventados ou mudanças incompatíveis.
-3. Atualizar `spec.md`, `DECISIONS.md`, `plans.md` e `task.md` para refletir o estado real.
-4. Submeter as alterações por commit/branch/pull request conforme o fluxo do repositório, após confirmação do usuário quando necessária.
-5. Informar explicitamente testes executados, resultados, limitações e pendências.
+Cobre T-024 a T-027.
+
+1. Valores preservados em itens não elegíveis (T-024).
+2. Resumo e contagens (T-025).
+3. Totais financeiros e invariantes (T-026, sujeita às correções 70 e 75).
+4. Saída estável com `versao_spec`, `periodo` e ordem (T-027).
+
+**Saída:** resumo que reconcilia com os itens e satisfaz os invariantes.
+
+### Fase 7: CLI e erros operacionais
+
+Cobre T-028 e T-029.
+
+1. Contrato `calcular --input --output`, com códigos `0`, `2` e `3`.
+2. Logs fora do JSON de resultado.
+3. Arquivo inexistente, leitura e escrita, sem saída parcial em falha de lote ou de I/O.
+4. Determinismo: mesma entrada produz a mesma saída financeira (T-028).
+
+**Saída:** testes de integração e de CLI reproduzíveis.
+
+### Fase 8: Verificação, rastreabilidade e entrega
+
+Cobre T-030 a T-033.
+
+1. Transformar o exemplo de 14 itens em regressão e comparar com a execução real (T-030).
+2. Confirmar a matriz AC → tarefa → teste, inclusive a seção 11 da spec (T-031).
+3. Documentar uso e executar os comandos em ambiente limpo (T-032).
+4. Rodar formatter, linter e análise estática, se existirem. Executar a suíte completa e registrar resultados (T-033).
+5. Revisar o diff para detectar alterações fora do escopo ou requisitos inventados.
+6. Atualizar `spec.md`, `DECISIONS.md`, `plan.md` e `tasks.md` para refletir o estado real.
+7. Submeter por commit e branch conforme o fluxo do repositório, após confirmação.
+8. Informar testes executados, resultados, limitações e pendências.
 
 **Saída:** mudança revisável e rastreável, pronta para aprovação.
 
 ## Critérios de conclusão
 
-- [ ] Correção 69 decidida e todas as demais pendências identificadas.
-- [ ] Repositório e comandos reais inspecionados.
-- [ ] Erros de lote e erros de item seguem o contrato.
-- [ ] IDs e duplicatas são determinísticos conforme a especificação.
-- [ ] Cálculos e resumos respeitam todas as invariantes.
-- [ ] Cada critério de aceite aplicável está ligado a um teste automatizado identificável.
-- [ ] Suíte executada; resultados e falhas registrados sem alegações não verificadas.
-- [ ] Exemplos recalculados por execução.
+- [ ] Correção 69 decidida. Correções 70 a 75 aprovadas ou ajustadas.
+- [ ] Repositório e comandos inspecionados.
+- [ ] Erros de lote e de item seguem o contrato.
+- [ ] IDs e duplicatas determinísticos.
+- [ ] Totais e invariantes respeitados.
+- [ ] Cada AC ligado a um teste identificável.
+- [ ] Suíte executada, com resultados e falhas registrados.
+- [ ] Exemplo recalculado por execução.
 - [ ] Matriz de rastreabilidade revisada.
-- [ ] Mudanças documentais e de código revisadas e prontas para aprovação.
+- [ ] Documentos e código revisados e prontos para aprovação.
 
 ## Riscos e mitigação
 
 | Risco | Mitigação |
 |---|---|
-| Requisito do Dia 2 muda a política | Manter pendente e revisar impacto antes de aprovar a especificação final. |
-| Comportamento de período fica ambíguo | Não implementar interpretação definitiva para a correção 69 antes da decisão. |
-| Parser JSON não detecta chaves repetidas | Escolher ou implementar parsing que preserve e valide chaves antes de convertê-las em mapa/dicionário. |
-| Resumo diverge dos itens | Testar invariantes e recalcular exemplos usando a implementação. |
-| Testes não correspondem aos ACs | Usar IDs reais e matriz de rastreabilidade; não inventar nomes/caminhos antes de inspecionar o repositório. |
-| Especificação continua proposta | Manter status explícito até aprovação oficial. |
+| Dia 2 muda a política | Manter pendente e revisar a spec antes da aprovação |
+| Competência ambígua | Não implementar interpretação definitiva antes da correção 69 (parte de T-015) |
+| Parser não detecta chaves repetidas | Validar chaves antes de converter em mapa |
+| Resumo diverge dos itens | Testar invariantes e recalcular o exemplo por execução |
+| Testes não correspondem aos ACs | Usar os IDs reais da suíte e a matriz; não inventar nomes ou caminhos |
+| Especificação continua proposta | Manter o status explícito até a aprovação |
+| Correções 69 a 75 não aprovadas | Não implementar antes da aprovação: casos da 69 em T-015; T-006 (73 e 74); T-013, T-016 e T-017 (72); T-018 (71); T-024 e T-026 (75 e 70) |
