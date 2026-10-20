@@ -16,7 +16,7 @@ As regras e decisões foram aprovadas pelo responsável. O ChatGPT auxiliou na a
 | Especificação | Revisões de `spec.md` com decisões aprovadas pelo responsável |
 | Arquitetura | Python 3.11, `decimal.Decimal`, `unittest`, `argparse`; `plan.md` e `docs/evidencias/T-001-baseline.md` |
 | Implementação | Código em `src/`, commit `2789c78`, integrado pelo responsável com assistência de IA |
-| Testes | Suíte em `tests/`, executada localmente; última execução: 16 testes, `OK`, sem skips |
+| Testes | Suíte em `tests/`, executada localmente; última execução confirmada pelo responsável: **25 testes, `OK`, sem falhas** |
 | Envelope 2 | Regras nos documentos, quatro exemplos em `exemplos/envelope/`, commit `b3aaeff` |
 
 **Onde deleguei e me arrependi / onde deveria ter delegado:** requer relato pessoal do responsável; não é inferível de commits.
@@ -49,12 +49,12 @@ As regras e decisões foram aprovadas pelo responsável. O ChatGPT auxiliou na a
 - Verificações selecionadas de parsing estrito, chaves repetidas e campos da política/câmbio.
 - Uso de `git diff --cached --check` antes de commits; houve alerta de espaços finais em `docs/evidencias/cc-desconhecido.md`, corrigido antes do commit posterior.
 - Execução de `python -m src calcular` com os quatro argumentos obrigatórios, incluindo exemplo oficial e centro de custo desconhecido.
-- Última execução observada de `python -m unittest discover -s tests -v`: **16 testes executados, 16 aprovados, zero falhas, zero ignorados**.
+- Execução mais recente de `python -m unittest discover -s tests -v`, **confirmada pelo responsável em 20/10/2026**: **25 testes executados, resultado `OK`, sem falhas**. O total anterior era de 16 testes; foram adicionados 9 testes automatizados de auditoria financeira. Não foi fornecido neste registro o log integral da nova execução nem contagem independente de testes ignorados.
 - Última verificação de `git status --short` mostrada antes da geração temporária do resultado da CLI: sem alterações pendentes. Após gerar `resultado-envelope.json`, o status precisa ser conferido novamente.
 
 **Porcentagem de diffs integralmente revisados:** não medida.
 
-**Limitação:** 16 testes aprovados não comprovam cobertura de AC-001 a AC-036. A matriz de rastreabilidade por teste ainda precisa de conferência específica. Os testes foram preparados com assistência de IA; sua qualidade exige revisão independente das expectativas.
+**Limitação:** 25 testes aprovados não comprovam cobertura integral de AC-001 a AC-036. Os 9 testes adicionais exercitam cenários relacionados a AC-004, AC-023, AC-028, AC-029, AC-031, AC-034 e AC-036; a matriz de rastreabilidade ainda requer conferência específica de cada cenário normativo. Os testes foram preparados com assistência de IA; sua qualidade exige revisão independente das expectativas.
 
 ## O Envelope 2
 
@@ -69,6 +69,8 @@ As regras e decisões foram aprovadas pelo responsável. O ChatGPT auxiliou na a
 - `tests/test_validacao_global.py` — validações globais.
 - `tests/test_motor_integrado.py` — cenários selecionados do motor.
 - `tests/test_contrato_saida.py` — saída e formatação monetária.
+- `tests/test_auditoria_financeira.py` — **9 testes adicionais**: nota fiscal no limite de R$ 100,00 e acima dele; preservação de saldo; câmbio inválido e chave duplicada; limite mensal; reconciliação de totais; teto de representação comercial com política de R$ 200,00 e R$ 500,00; e distinção de despesas em moedas diferentes.
+- Suíte consolidada: **25 testes aprovados, sem falhas**, conforme confirmação do responsável após os commits dos testes adicionais.
 - `docs/evidencias/cc-desconhecido.md` — cenário de fallback.
 - `exemplos/envelope/` — quatro JSONs oficiais versionados.
 
@@ -89,6 +91,7 @@ As regras e decisões foram aprovadas pelo responsável. O ChatGPT auxiliou na a
 | Evidência de CC desconhecido e tarefas | `7ea1c00` |
 | README e relatório | `0b6bd46` |
 | Testes com exemplos oficiais | `b3aaeff` |
+| Testes adicionais de auditoria financeira (9 cenários) | Commit realizado e informado pelo responsável; hash ainda não fornecido |
 | Reserva de diretório de sessões | `01cbc34` |
 | Instruções `CLAUDE.md` | `aa39da2` |
 
@@ -106,8 +109,8 @@ Hashes abreviados foram observados no histórico compartilhado; confirmar os com
 
 ## Pendências verificáveis antes da entrega
 
-1. Atualizar `spec.md`, `plan.md` e `tasks.md` para refletir implementação e testes já observados, sem marcar cobertura não comprovada.
-2. Conferir a matriz AC-001 a AC-036 versus testes efetivos.
-3. Confirmar o status do Git após a geração do JSON temporário e removê-lo se não for artefato de entrega.
+1. Conferir se `spec.md`, `plan.md` e `tasks.md` refletem os 25 testes e a implementação atual, sem marcar cobertura não comprovada.
+2. Conferir a matriz AC-001 a AC-036 versus os 25 testes efetivos; registrar os cenários ainda sem evidência específica.
+3. Confirmar o status do Git e registrar o hash do commit dos 9 testes adicionais; remover o JSON temporário se não for artefato de entrega.
 4. Completar apenas com fatos pessoais verificáveis os relatos de delegação, arrependimento, ferramentas e revisão de diffs.
 5. Registrar sessões **reais** somente se existirem. `.gitkeep` não é evidência de sessão.
