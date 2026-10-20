@@ -1,134 +1,95 @@
-# Plano de execução: motor de reembolso
+# Plano técnico — Motor de Cálculo de Reembolso
 
-**Versão:** 0.2 · **Data:** 2026-10-20
-**Base:** `spec.md` v0.2 e `DECISIONS.md` v0.2, ambos propostos.
-**Backlog:** `tasks.md` (T-001 a T-033).
+**Revisão documental:** 20/10/2026 — contrato consolidado pós-Envelope 2  
+**Base normativa:** `spec.md` v0.2, `DECISIONS.md` e `tasks.md` T-001 a T-047.  
+**Estado:** planejamento; implementação, aprovação externa e testes executados não presumidos.
 
-## Objetivo
+## 1. Objetivo e limites
 
-Transformar a especificação em uma implementação determinística, testável e rastreável, sem assumir requisitos não aprovados.
+Implementar uma CLI determinística que processe um colaborador por lote, valide entrada e arquivos externos, converta valores para BRL, aplique regras de elegibilidade, nota fiscal e limites, e produza resultado auditável. A especificação prevalece sobre este plano em caso de divergência; registrar a divergência antes de codificar. Não reabrir decisões consolidadas silenciosamente.
 
-## Premissas
+## 2. Contrato da CLI (CONS-008; RN-017; AC-017)
 
-- `spec.md` e `DECISIONS.md` são propostas. A aprovação formal é pré-requisito para dar o plano como concluído.
-- A correção 69 bloqueia apenas a competência ausente ou inválida e as datas inexistentes em `periodo` (parte de T-015). A comparação inclusiva (T-015) e a inversão de datas válidas (T-014) já estão decididas.
-- Linguagem, estrutura de código, localização dos testes e comandos reais devem ser confirmados inspecionando o repositório. Não presumir caminhos nem tecnologias.
-- Nenhum teste é marcado como aprovado sem execução registrada.
-- O repositório pode conter apenas documentação, exemplos e templates. Verificar antes de planejar a implementação.
+```bash
+calcular --input entrada.json --output resultado.json --politica politica-v4.json --cambio cambio.json
+```
 
-## Fases
+Os quatro argumentos são obrigatórios. Não há descoberta automática de política/câmbio, defaults de caminhos ou valores embutidos. O comando de execução real (script, módulo ou binário) será documentado depois de confirmar a stack. Saída 0 para lote processado; 2 para falhas globais de contrato/entrada/política/câmbio; 3 para I/O da entrada principal ou escrita. Nunca publicar JSON financeiro parcial em falha global. Logs não integram o JSON.
 
-### Fase 1: Fechar decisões
+## 3. Descoberta obrigatória antes de codificar (T-001)
 
-1. Decidir a correção 69 (bloqueio da parte de T-015 que trata competência ausente ou inválida).
-2. Aprovar ou ajustar as correções 70 a 75.
-3. Receber o requisito do Dia 2 e analisar o impacto.
-4. Confirmar a versão de `spec.md` que será submetida à aprovação.
+1. Inspecionar a árvore real do fork, instruções `CLAUDE.md`, ferramentas e dependências.
+2. Obter os arquivos originais `politica-v4.json` e `cambio.json` do Envelope 2, registrar os caminhos, nomes de campos, tipos, estrutura de coleções e exemplos válidos/inválidos. **Não presumir campos não inspecionados.**
+3. Identificar fixtures e exemplo original de 14 despesas; não usar resultado antigo como gabarito da política v4.
+4. Executar testes preexistentes, se houver, e registrar comando, data e resultado. Se não houver suíte, registrar sua ausência.
+5. Escolher stack compatível com parser que preserve lexemas numéricos e suporte decimal exato; registrar escolha técnica sem mudar regras de negócio.
 
-**Saída:** decisões fechadas, pendências explícitas e baseline de requisitos.
+**Saída da T-001:** inventário de arquivos, schemas observados, stack, comando de execução e estado-base reproduzível.
 
-### Fase 2: Inspecionar o repositório
+## 4. Arquitetura lógica proposta
 
-1. Examinar a árvore de arquivos, `CLAUDE.md`, linguagem, dependências e comandos existentes.
-2. Verificar se existem implementação do motor, CLI, testes e dados de exemplo (`exemplos/`). Se não existirem, registrar.
-3. Executar a suíte existente, se houver, sem alterações, e registrar o resultado (T-001).
-4. Comparar o estado atual com a spec e listar lacunas e conflitos.
+- **CLI / I/O:** argumentos obrigatórios, leitura, escrita e códigos de saída.
+- **Parser JSON estrito:** chaves repetidas, tipos e lexemas numéricos preservados.
+- **Validação global:** envelope, colaborador, competência e período.
+- **Validação de item:** campos obrigatórios, datas, ID, moeda e valor original.
+- **Leitores externos:** validação integral da política e do câmbio segundo os schemas reais.
+- **Identidade e duplicidade:** IDs gerados, colisões, comparação normalizada e conteúdo canônico.
+- **Cálculo financeiro:** cotação da data/anterior, decimal exato, half-up por item, centavos inteiros, limites e NF.
+- **Saída / reconciliação:** status, motivos ordenados, avisos, quatro totais, invariantes e serialização monetária com duas casas.
 
-**Saída:** relatório de estado, comandos reproduzíveis e lista de arquivos a alterar.
+Os nomes acima são responsabilidades lógicas, não diretórios ou módulos já existentes. Definir arquivos concretos após T-001.
 
-### Fase 3: Contrato de entrada
+## 5. Ordem de implementação por dependências
 
-Cobre T-002 a T-007.
+| Fase | Tarefas | Resultado verificável |
+|---|---|---|
+| 0. Baseline | T-001 | Schemas originais e comandos reais inspecionados |
+| 1. Fundamentos | T-002, T-036, T-003 a T-006 | Fixtures válidas, decimal exato e erros globais |
+| 2. Dados externos | T-033, T-035, T-034 | Política/câmbio validados e fallback correto |
+| 3. Despesas e IDs | T-037, T-007 a T-013, T-016 a T-019 | Validação individual e duplicidade determinística |
+| 4. Conversão | T-038, T-039, T-014 | Seleção cambial, half-up e overflow por item |
+| 5. Regras | T-015, T-017, T-020 a T-022, T-040 a T-042 | Limites, competência, hospedagem, representação e NF |
+| 6. Resultado | T-023 a T-026, T-043, T-044 | Status, motivos, totais e invariantes |
+| 7. CLI | T-027, T-028 | Quatro argumentos e códigos 0/2/3 testados |
+| 8. Integração e entrega | T-029 a T-032, T-045 a T-047 | Regressão, README, rastreabilidade e evidências |
 
-1. Parser JSON estrito, com chaves repetidas (T-003).
-2. Envelope e colaborador, com `ENTRADA_INVALIDA` (T-004).
-3. Chaves exatas, campos extras e booleano (T-005).
-4. Validação estrutural de despesas, com erros em ordem fixa (T-006).
-5. Despesa inválida mantida em `items` e fora do resumo (T-007).
+A ordem é indicativa; respeitar dependências explícitas de `tasks.md` e registrar qualquer reorganização sem renumerar tarefas.
 
-**Saída:** contrato de entrada com testes unitários.
+## 6. Contratos de erro (CONS-009)
 
-### Fase 4: Identificadores
+- **Global:** `erro.codigo` = `JSON_INVALIDO`, `ENTRADA_INVALIDA`, `POLITICA_INVALIDA`, `CAMBIO_INVALIDO` ou `ERRO_IO`; sem `items`/`resumo`.
+- **Individual:** `items[].motivos` pode conter `DADO_INVALIDO` para estrutura/ID ou `ENTRADA_INVALIDA` para valor, moeda e capacidade de conversão; item permanece, lote prossegue.
+- **Exemplos de regressão:** colaborador sem ID → global; `valor: 10.501` → individual monetário; data inexistente de despesa → individual estrutural; período global inválido → global.
 
-Cobre T-008 a T-010.
+Não criar novos aliases de motivos. Precedência e base dos totais seguem RN-015/016/026.
 
-1. Geração de ID ausente, com índice original (T-008).
-2. Colisões de IDs gerados, com sufixos (T-009).
-3. ID repetido como motivo `ID_REPETIDO` e normalização de comparação (T-010).
+## 7. Estratégia de testes e rastreabilidade
 
-**Saída:** IDs determinísticos com testes de colisão e repetição.
+Criar testes unitários para parsers, normalização, valores, limites e deduplicação; integração para CLI/arquivos externos; regressão para fixture original e Envelope 2; propriedades/invariantes para contagens e totais. Cobrir limites inclusivos/exclusivos, moedas sem cotação, câmbio futuro, cotação duplicada, falhas globais e continuidade de itens.
 
-### Fase 5: Cálculo e precedência
+A matriz executável deve registrar para cada **AC-001 a AC-036**: `AC | RN | T | arquivo::teste | comando | resultado | evidência/commit`. Preencher caminhos e resultados apenas após criar e executar testes. Até lá: **NÃO EXECUTADO**. T-030 e T-045 fecham mapeamento; T-047 executa e documenta a suíte completa.
 
-Cobre T-011 a T-023.
+## 8. Evidências e commits
 
-1. Arredondamento half-up e valores zero ou negativos (T-011, T-013).
-2. Normalização de categoria (T-012).
-3. Período: inversão (T-014) e competência inclusiva (T-015, sujeita à correção 69 nos casos indicados).
-4. Deduplicação por conteúdo e canônico (T-016, T-017).
-5. Precedência de motivos (T-018), nota fiscal (T-019), dias civis e categoria (T-020).
-6. Limites diários (T-021), viagem (T-022) e diárias de hospedagem (T-023).
+Para cada tarefa: alteração focada, testes relacionados, comando e saída registrados, vínculo RN/AC/T, commit identificável. Registrar sessões e decisões técnicas em `docs/sessions/` conforme exigências do desafio e produzir `docs/RELATORIO.md` com intervenções humanas, verificações, falhas e limitações. Não atribuir aprovação formal ao avaliador.
 
-**Saída:** cálculo coberto por testes unitários e casos de fronteira.
-
-### Fase 6: Saída e totais
-
-Cobre T-024 a T-027.
-
-1. Valores preservados em itens não elegíveis (T-024).
-2. Resumo e contagens (T-025).
-3. Totais financeiros e invariantes (T-026, sujeita às correções 70 e 75).
-4. Saída estável com `versao_spec`, `periodo` e ordem (T-027).
-
-**Saída:** resumo que reconcilia com os itens e satisfaz os invariantes.
-
-### Fase 7: CLI e erros operacionais
-
-Cobre T-028 e T-029.
-
-1. Contrato `calcular --input --output`, com códigos `0`, `2` e `3`.
-2. Logs fora do JSON de resultado.
-3. Arquivo inexistente, leitura e escrita, sem saída parcial em falha de lote ou de I/O.
-4. Determinismo: mesma entrada produz a mesma saída financeira (T-028).
-
-**Saída:** testes de integração e de CLI reproduzíveis.
-
-### Fase 8: Verificação, rastreabilidade e entrega
-
-Cobre T-030 a T-033.
-
-1. Transformar o exemplo de 14 itens em regressão e comparar com a execução real (T-030).
-2. Confirmar a matriz AC → tarefa → teste, inclusive a seção 11 da spec (T-031).
-3. Documentar uso e executar os comandos em ambiente limpo (T-032).
-4. Rodar formatter, linter e análise estática, se existirem. Executar a suíte completa e registrar resultados (T-033).
-5. Revisar o diff para detectar alterações fora do escopo ou requisitos inventados.
-6. Atualizar `spec.md`, `DECISIONS.md`, `plan.md` e `tasks.md` para refletir o estado real.
-7. Submeter por commit e branch conforme o fluxo do repositório, após confirmação.
-8. Informar testes executados, resultados, limitações e pendências.
-
-**Saída:** mudança revisável e rastreável, pronta para aprovação.
-
-## Critérios de conclusão
-
-- [ ] Correção 69 decidida. Correções 70 a 75 aprovadas ou ajustadas.
-- [ ] Repositório e comandos inspecionados.
-- [ ] Erros de lote e de item seguem o contrato.
-- [ ] IDs e duplicatas determinísticos.
-- [ ] Totais e invariantes respeitados.
-- [ ] Cada AC ligado a um teste identificável.
-- [ ] Suíte executada, com resultados e falhas registrados.
-- [ ] Exemplo recalculado por execução.
-- [ ] Matriz de rastreabilidade revisada.
-- [ ] Documentos e código revisados e prontos para aprovação.
-
-## Riscos e mitigação
+## 9. Riscos e mitigação
 
 | Risco | Mitigação |
 |---|---|
-| Dia 2 muda a política | Manter pendente e revisar a spec antes da aprovação |
-| Competência ambígua | Não implementar interpretação definitiva antes da correção 69 (parte de T-015) |
-| Parser não detecta chaves repetidas | Validar chaves antes de converter em mapa |
-| Resumo diverge dos itens | Testar invariantes e recalcular o exemplo por execução |
-| Testes não correspondem aos ACs | Usar os IDs reais da suíte e a matriz; não inventar nomes ou caminhos |
-| Especificação continua proposta | Manter o status explícito até a aprovação |
-| Correções 69 a 75 não aprovadas | Não implementar antes da aprovação: casos da 69 em T-015; T-006 (73 e 74); T-013, T-016 e T-017 (72); T-018 (71); T-024 e T-026 (75 e 70) |
+| Schema externo presumido | Bloquear leitores até T-001 inspecionar JSONs originais |
+| Parser perde precisão/lexema | Decimal exato e testes para científico, casas e zeros finais |
+| Regras antigas reaparecem | Regressão pós-Envelope 2 e DECISIONS como histórico de substituições |
+| Código global confundido com item | Testes distintos para `erro.codigo` e `items[].motivos` |
+| Totais não reconciliam | Invariantes RN-018 e bases RN-016/026 |
+| Testes declarados sem execução | Registrar status NÃO EXECUTADO até evidência real |
+
+## 10. Critérios para iniciar implementação
+
+- [x] Contrato dos quatro argumentos definido documentalmente.
+- [x] Escopo dos erros esclarecido documentalmente.
+- [ ] T-001 concluída com schemas e stack verificados.
+- [ ] Fixtures válidas criadas a partir dos schemas inspecionados.
+- [ ] Testes iniciais executados e resultados registrados.
+
+Este plano não equivale à conclusão das tarefas nem à aprovação da especificação.

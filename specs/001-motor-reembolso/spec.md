@@ -45,7 +45,7 @@ Os limites mensais consideram as despesas do lote processado. Sem histórico ext
 
 Não manter dois modos implícitos, um anterior e outro posterior ao Envelope 2.
 
-Os schemas físicos de politica-v4.json e cambio.json devem ser conferidos nos arquivos originais antes da implementação dos leitores. Esta especificação não inventa seus nomes internos de campos.
+Os schemas físicos de politica-v4.json e cambio.json devem ser conferidos nos arquivos originais antes da implementação dos leitores. Esta especificação não inventa seus nomes internos de campos. Os caminhos desses arquivos são informados obrigatoriamente pela CLI conforme RN-017.
 
 ## 4. Entrada
 
@@ -180,7 +180,11 @@ Não usar os aliases total_bruto_convertido e total_nao_reembolsado.
 
 Itens estruturalmente inválidos permanecem em items, mas não entram em total_itens nem nas contagens por status.
 
-### 5.6 Falha de lote
+### 5.6 Escopo dos erros
+
+O código `ENTRADA_INVALIDA` pode aparecer em dois níveis sem equivalência de efeito: em `erro.codigo` na raiz, indica falha global de envelope, colaborador ou período e impede `items` e `resumo`; em `items[].motivos`, indica falha monetária, de moeda ou capacidade de conversão da despesa, que permanece em `items` com reembolso zero e não interrompe o lote. `DADO_INVALIDO` sinaliza falhas estruturais individuais não monetárias. Exemplo: colaborador sem `id` produz erro global `ENTRADA_INVALIDA`; despesa com `valor: 10.501` produz motivo individual `ENTRADA_INVALIDA`; despesa com `data: "2026-02-30"` produz `DADO_INVALIDO`. A distinção é feita pela posição do código na saída, não por novo alias.
+
+### 5.7 Falha de lote
 
 Formato:
 
@@ -463,11 +467,13 @@ A diferença entre total_original_convertido e total_reembolsavel não deve ser 
 
 ### RN-017 — CLI e determinismo
 
-Contrato existente:
+Contrato obrigatório para a implementação (ainda não declarado como executável):
 
-calcular --input <arquivo> --output <arquivo>
+```bash
+calcular --input entrada.json --output resultado.json --politica politica-v4.json --cambio cambio.json
+```
 
-A forma concreta de informar politica-v4.json e cambio.json deve ser confirmada e documentada após inspeção da CLI existente. Não inventar argumentos como se já estivessem implementados.
+Os quatro argumentos `--input`, `--output`, `--politica` e `--cambio` são obrigatórios e recebem caminhos de arquivos. Não há descoberta automática, fallback de caminhos ou política/câmbio embutidos. Ausência de argumento obrigatório é erro global de uso, com saída 2 e sem resultado financeiro. A sintaxe de invocação executável (binário, módulo ou script) deve ser documentada após escolha da stack, preservando os quatro argumentos. A inspeção da T-001 deve confirmar como adaptar a implementação existente, se houver, sem revogar este contrato.
 
 Códigos de saída:
 
@@ -695,7 +701,7 @@ Os identificadores abaixo descrevem testes requeridos. Não representam testes j
 | AC-014 | Todos os erros estruturais são ordenados; IDs ausentes/ inválidos/colidentes seguem o contrato | RN-014 |
 | AC-015 | Motivos são únicos e ordenados; ID repetido precede conteúdo duplicado | RN-015 |
 | AC-016 | Totais usam suas bases distintas, incluindo recusa exclusiva por limite na base solicitada | RN-016 |
-| AC-017 | CLI distingue processamento, erro global e I/O, sem logs no JSON | RN-017 |
+| AC-017 | CLI exige os quatro argumentos, distingue processamento, erro global e I/O, sem logs no JSON | RN-017 |
 | AC-018 | Contagens e invariantes financeiros são satisfeitos | RN-018 |
 | AC-019 | Chave JSON repetida na entrada principal rejeita lote com JSON_INVALIDO | RN-014 |
 | AC-020 | Colaborador obrigatório incompleto rejeita lote com ENTRADA_INVALIDA | RN-014 |

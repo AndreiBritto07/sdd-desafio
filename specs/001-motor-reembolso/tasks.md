@@ -20,7 +20,7 @@ Não declarar um teste existente ou aprovado antes de verificá-lo.
 
 A numeração T-001 a T-047 é preservada. A ordem numérica não representa dependência obrigatória.
 
-Antes de fixtures e leitores externos, concluir a inspeção de schemas da T-001.
+Antes de fixtures e leitores externos, concluir a inspeção de schemas da T-001. A CLI terá obrigatoriamente `--input`, `--output`, `--politica` e `--cambio` (CONS-008).
 
 Para tarefas financeiras, implementar primeiro os fundamentos necessários: política, parser decimal, validação monetária e conversão.
 
@@ -187,9 +187,9 @@ Para tarefas financeiras, implementar primeiro os fundamentos necessários: pol�
 
 ### T-027 — Implementar contrato e códigos da CLI
 
-- Ação: preservar calcular --input/--output e integrar os arquivos externos pelo mecanismo confirmado na inspeção.
+- Ação: preservar calcular --input/--output e exigir `--politica` e `--cambio` além de `--input` e `--output`, conforme CONS-008.
 - Referências: RN-017; AC-017.
-- Aceite: test_cli_codigos_0_2_3 passa; política/câmbio inválidos usam erro semântico e código 2.
+- Aceite: test_cli_codigos_0_2_3 e test_cli_quatro_argumentos_obrigatorios passam; política/câmbio inválidos usam erro semântico e código 2.
 
 ### T-028 — Tratar I/O da entrada principal e escrita
 
@@ -211,7 +211,7 @@ Para tarefas financeiras, implementar primeiro os fundamentos necessários: pol�
 
 ### T-031 — Documentar execução da CLI
 
-- Ação: documentar pré-requisitos, comandos reais, códigos e estrutura da saída consolidada.
+- Ação: documentar pré-requisitos, os quatro argumentos obrigatórios, comandos reais, códigos e estrutura da saída consolidada.
 - Referências: RN-017; AC-017.
 - Aceite: executar os comandos documentados em ambiente limpo ou registrar precisamente impedimento reproduzível.
 
@@ -304,7 +304,7 @@ Para tarefas financeiras, implementar primeiro os fundamentos necessários: pol�
 
 ### T-046 — Documentar política, câmbio e novos totais
 
-- Ação: documentar schemas reais, fornecimento dos arquivos, erros globais, códigos de motivos e bases dos quatro totais.
+- Ação: documentar schemas reais após T-001, os quatro argumentos obrigatórios, erros globais, códigos de motivos e bases dos quatro totais.
 - Referências: RN-016/017/019/020/026; AC-017/022/023/031/032.
 - Aceite: exemplo executável usa arquivos reais válidos; documentação não contém aliases removidos nem parâmetros de CLI inventados.
 
@@ -313,6 +313,10 @@ Para tarefas financeiras, implementar primeiro os fundamentos necessários: pol�
 - Ação: executar testes unitários, integração e regressão; conferir documentação e invariantes.
 - Referências: AC-001 a AC-036.
 - Aceite: todos os ACs têm teste identificado e aprovado; comandos e resultados reais estão registrados; não existem regras antigas conflitantes nos três documentos.
+
+## Matriz de execução dos critérios de aceite
+
+Os 36 critérios AC-001 a AC-036 devem ser rastreados na implementação por: `AC | RN | T | arquivo::teste | comando | resultado | evidência/commit`. Os nomes de testes previstos nas tarefas são hipóteses de planejamento, não testes já existentes. Até execução registrada, cada resultado é **NÃO EXECUTADO**. T-030 e T-045 devem completar os vínculos com caminhos reais; T-047 só poderá ser concluída após execução e evidências.
 
 ## Definição de pronto
 

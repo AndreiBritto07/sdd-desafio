@@ -259,6 +259,20 @@ Exemplos:
 
 **Relação:** matriz AC/RN do spec; T-030/T-045.
 
+### CONS-008 — Contrato obrigatório da CLI
+
+**Origem:** opção A confirmada pelo usuário em 20/10/2026.
+
+**Decisão:** exigir `--input`, `--output`, `--politica` e `--cambio`, todos com caminho explícito. Não descobrir arquivos automaticamente nem embutir fallback. Argumento obrigatório ausente causa erro global de uso (saída 2), sem resultado financeiro. A forma executável concreta depende da stack, mas não os nomes dos argumentos.
+
+**Relação:** RN-017; AC-017; T-027/T-031/T-046.
+
+### CONS-009 — Separação entre erro global e individual
+
+**Decisão:** preservar `ENTRADA_INVALIDA` global em `erro.codigo` para envelope/colaborador/período e individual em `items[].motivos` para valor/moeda/conversão inválidos. O primeiro aborta o lote; o segundo mantém o item e permite processar os demais. Preservar `DADO_INVALIDO` para falhas estruturais individuais não monetárias.
+
+**Relação:** RN-014/015/017/023; AC-014/017/020/027; T-007/T-009/T-027.
+
 ## 6. Regras substituídas
 
 Não implementar como alternativas vigentes:
@@ -280,7 +294,7 @@ Não implementar como alternativas vigentes:
 
 Pendências técnicas:
 
-- Conferir schemas originais da política e do câmbio.
+- Conferir schemas originais da política e do câmbio e registrar campos reais antes de implementar leitores.
 - Inspecionar CLI e suíte reais.
 - Implementar e executar testes.
 - Registrar resultados e atualizar rastreabilidade.
