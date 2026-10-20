@@ -2,118 +2,112 @@
 
 **Repositório:** https://github.com/AndreiBritto07/sdd-desafio  
 **Data:** 20/10/2026  
-**Status:** relatório baseado nas evidências disponíveis; campos de experiência pessoal e histórico ainda requerem confirmação.
+**Status:** relato de execução baseado em evidências observadas; cobertura integral e informações pessoais não presumidas.
 
-> Critério de transparência: resultados de terminal e hashes apresentados são evidências observadas; interpretações sobre qualidade, cobertura e autoria são identificadas como tais. Não foram presumidas sessões exportadas do Claude Code.
+> Transparência: capturas de terminal e hashes observados comprovam execuções pontuais. Não há sessões exportadas do Claude Code comprovadas. A assistência relatada foi realizada com ChatGPT.
 
 ## Delegação
 
-A definição das regras e a aprovação de decisões ficaram com o responsável pelo projeto. Houve assistência de IA na análise de ambiguidades, revisão documental, proposta de arquitetura e preparação de trechos de implementação e testes. A execução local, inspeção dos resultados e realização dos commits foram conduzidas pelo responsável, conforme capturas de terminal compartilhadas.
+As regras e decisões foram aprovadas pelo responsável. O ChatGPT auxiliou na análise de ambiguidades, redação e revisão da especificação, planejamento, preparação de código e testes e diagnóstico de resultados. O responsável integrou os arquivos, executou os comandos no ambiente local, conferiu saídas e realizou os commits e pushes mostrados nas capturas.
 
-| Atividade | Divisão observável | Evidência |
-|---|---|---|
-| Identificar ambiguidades | Análise assistida por IA; decisões discutidas com o responsável | `spec.md` e `DECISIONS.md` |
-| Decidir ambiguidades | Responsável aprovou escolhas explícitas | `DECISIONS.md` |
-| Especificar | Iterações assistidas por IA e revisão do responsável | `spec.md` |
-| Arquitetura | Stack Python 3.11 aprovada pelo responsável | `plan.md`; `docs/evidencias/T-001-baseline.md` |
-| Implementar | Código integrado e versionado pelo responsável, com assistência de IA | `src/`; commit `2789c78` |
-| Testar | Suíte executada localmente pelo responsável | `tests/`; saída de `unittest` |
-| Envelope 2 | Decisões incorporadas aos documentos e cenários executados | `spec.md`, `DECISIONS.md`, `tasks.md`, `docs/evidencias/` |
+| Atividade | Participação e evidência |
+|---|---|
+| Identificação e resolução de ambiguidades | Discussões assistidas por IA; decisões consolidadas em `DECISIONS.md` |
+| Especificação | Revisões de `spec.md` com decisões aprovadas pelo responsável |
+| Arquitetura | Python 3.11, `decimal.Decimal`, `unittest`, `argparse`; `plan.md` e `docs/evidencias/T-001-baseline.md` |
+| Implementação | Código em `src/`, commit `2789c78`, integrado pelo responsável com assistência de IA |
+| Testes | Suíte em `tests/`, executada localmente; última execução: 16 testes, `OK`, sem skips |
+| Envelope 2 | Regras nos documentos, quatro exemplos em `exemplos/envelope/`, commit `b3aaeff` |
 
-**Onde deleguei e me arrependi / onde deveria ter delegado:** não é possível concluir apenas pelos arquivos e capturas; preencher com um episódio real antes da entrega.
+**Onde deleguei e me arrependi / onde deveria ter delegado:** requer relato pessoal do responsável; não é inferível de commits.
 
-**Subagentes, skills, MCP e hooks:** não há evidência suficiente para afirmar uso ou ausência. Confirmar com o responsável.
+**Subagentes, skills, MCP e hooks:** não há evidência de uso no material revisado. O trabalho assistido documentado ocorreu com ChatGPT, sem atribuir sessões inexistentes ao Claude Code.
 
-## Descrição — transformar ambiguidade em regra verificável
+## Descrição — ambiguidade transformada em regra
 
-**Exemplo escolhido: limite de representação em `CC-COMERCIAL`.**
+**Exemplo:** limite de representação em `CC-COMERCIAL`.
 
-**Ambiguidade identificada:** a política externa contém limite de R$ 300,00 para representação, mas era necessário explicitar se uma política futura poderia ultrapassar esse valor.
+**Ambiguidade:** a política apresentava R$ 300,00 para representação; faltava decidir se esse valor poderia ser ampliado por outra política.
 
-**Decisão final do responsável:** R$ 300,00 é **teto máximo**; a política externa pode estabelecer limite inferior, mas não superior. A regra deve constar em `spec.md` e `DECISIONS.md` e ser refletida na implementação e em testes.
+**Decisão:** R$ 300,00 é teto máximo absoluto. Uma política pode estabelecer valor menor, nunca maior. Ver `DECISIONS.md` (CONS-001), `spec.md` (RN-019/AC-034) e `tasks.md` (T-041).
 
-**Evidência de execução:** no processamento do exemplo do Envelope 2, um item de representação de R$ 340,00 foi apresentado como `PARCIAL`, com R$ 300,00 reembolsáveis e motivo `LIMITE_DIARIO`.
+**Evidência funcional observada:** no exemplo do Envelope 2, representação de R$ 340,00 resultou em reembolso de R$ 300,00, status `PARCIAL` e motivo `LIMITE_DIARIO`. Isso demonstra o cenário executado, não todas as variações da política.
 
-**Primeira redação literal e hash específico da alteração:** a recuperar no histórico de commits ou sessões. Não foi inventada uma versão inicial.
+**Primeira redação literal e commit exato da mudança:** não identificados com segurança; consultar histórico do Git antes de afirmar.
 
-## Discernimento — proposta de IA confrontada com evidências
+## Discernimento — IA confrontada com evidência
 
-**Caso documentável: alcance de validações do baseline.** Durante a inspeção dos arquivos externos, foram executadas verificações de sintaxe, chaves JSON repetidas e verificações selecionadas de campos. Esses resultados **não comprovavam** conformidade semântica integral com RN-019 e RN-020. O relatório `docs/evidencias/T-001-baseline.md` foi ajustado para distinguir a inspeção concluída da validação normativa ainda não demonstrada.
+**Caso concreto:** durante o baseline, verificações de sintaxe JSON, chaves repetidas e alguns campos foram inicialmente tratadas como indicativas de validação dos arquivos externos. Essas verificações não demonstravam conformidade semântica integral de RN-019 e RN-020.
 
-**Por que importou:** declarar uma validação integral sem testes correspondentes teria criado rastreabilidade falsa. A correção preservou a limitação e direcionou a validação completa às tarefas de implementação.
+**Detecção e correção:** ao revisar a diferença entre inspeção e validação normativa, a evidência `docs/evidencias/T-001-baseline.md` foi ajustada para delimitar o que havia sido efetivamente comprovado. Referências: commits `6aad0c8` e `ac12323`.
 
-**Evidência:** `docs/evidencias/T-001-baseline.md`, commits `6aad0c8` e `ac12323` (confirmar hashes completos via `git log`).
+**Lição:** uma inspeção parcial não pode ser registrada como teste integral de requisitos. Não atribuir este episódio a uma sessão exportada do Claude Code.
 
-**Sessão exportada correspondente:** ainda não identificada. Sem exportação verificável, não atribuir esse episódio a uma sessão específica do Claude Code.
+## Diligência — verificações realizadas
 
-## Diligência — verificações efetivamente observadas
+- Inspeção dos exemplos JSON e dos arquivos externos do Envelope 2.
+- Verificações selecionadas de parsing estrito, chaves repetidas e campos da política/câmbio.
+- Uso de `git diff --cached --check` antes de commits; houve alerta de espaços finais em `docs/evidencias/cc-desconhecido.md`, corrigido antes do commit posterior.
+- Execução de `python -m src calcular` com os quatro argumentos obrigatórios, incluindo exemplo oficial e centro de custo desconhecido.
+- Última execução observada de `python -m unittest discover -s tests -v`: **16 testes executados, 16 aprovados, zero falhas, zero ignorados**.
+- Última verificação de `git status --short` mostrada antes da geração temporária do resultado da CLI: sem alterações pendentes. Após gerar `resultado-envelope.json`, o status precisa ser conferido novamente.
 
-Foram observadas as seguintes verificações:
+**Porcentagem de diffs integralmente revisados:** não medida.
 
-- Leitura e inspeção de arquivos JSON de exemplo e do Envelope 2.
-- Parsing estrito selecionado para detectar chaves repetidas e constantes JSON inválidas.
-- Execução de verificações parciais de política e câmbio, sem alegar conformidade semântica integral.
-- `git diff --cached --check` antes de commits; em uma execução, o comando apontou espaços ao final das linhas 3 e 4 de `docs/evidencias/cc-desconhecido.md`.
-- Execução de `python -m unittest discover -s tests -v`: **16 testes, resultado `OK`**.
-- Execução da CLI com o exemplo do Envelope 2 e com centro de custo desconhecido.
-
-**Porcentagem de diffs lidos integralmente:** não medida; não estimar sem evidência.
-
-**Limitações:** os testes aprovados demonstram os cenários implementados na suíte, não cobertura integral da spec. A execução com centro de custo desconhecido apresentou fallback para a política padrão e resumo com `totais_completos: true`; trata-se de evidência de um caso, não de todos os centros de custo.
+**Limitação:** 16 testes aprovados não comprovam cobertura de AC-001 a AC-036. A matriz de rastreabilidade por teste ainda precisa de conferência específica. Os testes foram preparados com assistência de IA; sua qualidade exige revisão independente das expectativas.
 
 ## O Envelope 2
 
-**Alterações tratadas:** política externa `politica-v4.json`, cotações `cambio.json`, despesas em outras moedas, regras por centro de custo, representação, hospedagem e contrato de saída.
+**Alterações:** incorporação de `politica-v4.json`, `cambio.json`, despesas em moedas estrangeiras, regras por centro de custo, hospedagem, representação, conversão e contrato de saída.
 
-**Ordem observada em alto nível:** especificação e decisões foram consolidadas antes da implementação registrada nos commits posteriores. Para afirmar a ordem exata de todas as alterações, consultar `git log --oneline --all` e os arquivos de sessões.
+**Ordem observada:** consolidação de decisões e especificação, preparação de fixtures, validação global, motor/CLI, testes de saída, exemplos oficiais e documentação. A ordem exata e o diff acumulado devem ser extraídos do histórico Git.
 
-**Evidências técnicas:**
+**Evidências:**
 
-- `docs/evidencias/T-001-baseline.md`: inspeção inicial, limitações e stack escolhida.
-- `tests/test_fixtures.py`: fixtures reutilizáveis.
-- `tests/test_validacao_global.py`: cenários de envelope e colaborador.
-- `tests/test_motor_integrado.py`: cenários selecionados do motor.
-- `tests/test_contrato_saida.py`: contrato e serialização.
-- `docs/evidencias/cc-desconhecido.md`: cenário de fallback, conforme registro local.
+- `docs/evidencias/T-001-baseline.md` — baseline e limites da inspeção.
+- `tests/test_fixtures.py` — fixtures.
+- `tests/test_validacao_global.py` — validações globais.
+- `tests/test_motor_integrado.py` — cenários selecionados do motor.
+- `tests/test_contrato_saida.py` — saída e formatação monetária.
+- `docs/evidencias/cc-desconhecido.md` — cenário de fallback.
+- `exemplos/envelope/` — quatro JSONs oficiais versionados.
 
-**Medições ainda necessárias:** quantidade de arquivos editados manualmente, tempo decorrido e diff agregado de absorção. Para obter o diff sem inventar números, identificar o commit anterior ao Envelope 2 e executar:
+**Medições não disponíveis:** número de arquivos editados manualmente, tempo decorrido e diff agregado de absorção. Para obter o último, identificar o commit imediatamente anterior à absorção e executar `git diff <commit-base> HEAD --stat`.
 
-```bash
-git diff <commit-anterior-ao-envelope> HEAD --stat
-```
+**Benefício observado da especificação:** tornar explícitas as decisões de limite comercial, moeda, conversão e arredondamento antes da implementação. Não foi medido tempo economizado.
 
-**O que a especificação poupou:** forneceu um local explícito para registrar escolhas antes de codificar, especialmente as regras de centro de custo, moeda e arredondamento. Esta é uma avaliação do processo, não uma medição de horas economizadas.
+## Rastreabilidade e commits
 
-## Rastreabilidade e commits observados
-
-| Evidência | Referência |
+| Evidência | Commit abreviado |
 |---|---|
-| Consolidação documental após Envelope 2 | `cb8cacd` |
-| Baseline técnico | `6aad0c8` |
-| Complemento do parecer de inspeção | `ac12323` |
+| Consolidação pós-Envelope 2 | `cb8cacd` |
+| Baseline e complemento | `6aad0c8`, `ac12323` |
 | Fixtures | `69fc292` |
 | Validação global | `6ee59ee` |
-| Testes de contrato de saída | `5b8beae` |
+| Testes monetários e hospedagem | `5b8beae` |
 | Motor e CLI | `2789c78` |
-| Atualização documental final observada | `7eafc00` |
-| Publicação remota | `git push origin main` concluído na captura de 20/10/2026 |
+| Evidência de CC desconhecido e tarefas | `7ea1c00` |
+| README e relatório | `0b6bd46` |
+| Testes com exemplos oficiais | `b3aaeff` |
+| Reserva de diretório de sessões | `01cbc34` |
+| Instruções `CLAUDE.md` | `aa39da2` |
 
-Os hashes acima são abreviados e devem ser conferidos em `git log --oneline` antes da entrega.
+Hashes abreviados foram observados no histórico compartilhado; confirmar os completos com `git log --oneline` se exigido.
 
 ## Fechamento
 
-**Para qual tamanho de projeto valeu a pena:** o processo mostrou utilidade em um desafio com regras financeiras, casos de borda e alteração contratual relevante, nos quais decisões implícitas gerariam comportamentos inconsistentes.
+**Onde valeu a pena:** um desafio com regras financeiras, múltiplas ambiguidades, exigência de auditoria e mudança contratual relevante.
 
-**Para qual não valeria:** em um script descartável e sem regras ambíguas, a documentação completa poderia custar mais que a implementação.
+**Onde talvez não valesse:** um script descartável, sem decisões ambíguas e sem exigência de rastreabilidade.
 
-**O que faria diferente:** iniciar os testes e as exportações de sessões mais cedo, mantendo cada evidência associada à tarefa e ao commit correspondente.
+**O que faria diferente:** iniciar testes e registro de evidências mais cedo e associar cada AC a um teste real.
 
-**Aprendizado:** testes verdes não dispensam revisão da especificação nem provam cobertura de requisitos que não foram exercitados.
+**Aprendizado:** testes verdes não dispensam revisão da especificação e não comprovam requisitos não exercitados.
 
-## Pendências antes da entrega
+## Pendências verificáveis antes da entrega
 
-1. Confirmar as informações pessoais sobre delegação, arrependimento e ferramentas utilizadas; não preencher por suposição.
-2. Exportar e versionar sessões **reais** em `docs/sessions/`, se disponíveis; não criar sessões fictícias.
-3. Corrigir os espaços em branco identificados em `docs/evidencias/cc-desconhecido.md`.
-4. Garantir que os quatro JSONs oficiais do Envelope 2 estejam versionados.
-5. Conferir os hashes, o status de `tasks.md` e a coerência final com `spec.md`, `plan.md` e `DECISIONS.md`.
+1. Atualizar `spec.md`, `plan.md` e `tasks.md` para refletir implementação e testes já observados, sem marcar cobertura não comprovada.
+2. Conferir a matriz AC-001 a AC-036 versus testes efetivos.
+3. Confirmar o status do Git após a geração do JSON temporário e removê-lo se não for artefato de entrega.
+4. Completar apenas com fatos pessoais verificáveis os relatos de delegação, arrependimento, ferramentas e revisão de diffs.
+5. Registrar sessões **reais** somente se existirem. `.gitkeep` não é evidência de sessão.
