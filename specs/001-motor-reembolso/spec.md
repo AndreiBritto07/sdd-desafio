@@ -1,8 +1,8 @@
 # Spec — Motor de Cálculo de Reembolso
 
-**Versão:** 0.1 · **Status:** proposta para revisada por Andrei · **Data:** 19/10/2026
+**Versão:** 0.2 · **Status:** proposta, pendente de aprovação oficial · **Data:** 20/10/2026
 
-As decisões abaixo são propostas explícitas deste documento, não respostas oficiais nem decisões já aprovadas pelo participante. Uma vez adotadas, formam um comportamento completo e verificável. Revisar especialmente viagem, diárias, duplicatas e ordem de consumo antes de implementar. A mudança do Dia 2 é desconhecida.
+Este documento consolida as correções decididas durante a revisão, mas essas escolhas continuam sendo propostas e não equivalem a aprovação oficial. A versão 0.1 é preservada no histórico do repositório. A mudança do Dia 2 ainda não foi recebida; regras relacionadas deverão ser revisadas quando o requisito chegar. A correção 69 (tratamento de competência/datas inválidas além da inversão) permanece em aberto e não é presumida nesta versão.
 
 ## 1. Problema
 O financeiro confere despesas manualmente contra uma política ambígua, gerando demora e decisões inconsistentes.
@@ -25,24 +25,24 @@ Mantém exatamente o formato do exemplo original.
 | periodo.competencia | texto YYYY-MM | Sim, mês válido |
 | periodo.inicio, fim | data YYYY-MM-DD | Sim, datas reais inclusivas no mês de competência |
 | despesas | lista | Sim, pode estar vazia |
-| despesas[].id | texto não vazio | Sim; único quando presente e válido |
+| despesas[].id | texto | Opcional; se ausente, gerar ID determinístico; se presente, deve ser texto não vazio válido |
 | despesas[].data | data YYYY-MM-DD | Sim |
 | despesas[].categoria | texto | Sim; normalização definida em RN-011 |
 | despesas[].descricao, fornecedor | texto não vazio | Sim; sem normalização |
 | despesas[].valor | número decimal finito | Sim; booleano não é número, não aceitar texto numérico |
 | despesas[].tem_nota_fiscal | booleano | Sim; somente true ou false |
 
-Strings obrigatórias contendo somente espaços são inválidas. Chaves são exatas; extras são ignoradas. Raiz não objeto, despesas não lista, colaborador/período inválidos e IDs repetidos invalidam o lote. Datas não têm hora/fuso. Valores estão em reais. Sem limite artificial de quantidade de itens nesta versão.
+Strings obrigatórias contendo somente espaços são inválidas. Chaves são exatas; campos extras são ignorados. Campos extras na raiz, envelope e despesas não alteram cálculos. JSON inválido, chaves JSON repetidas, envelope inválido ou colaborador incompleto/inválido rejeitam o lote inteiro. Campo `id` de despesa ausente gera ID; presente mas vazio, composto só por espaços ou com tipo incorreto torna a despesa estruturalmente inválida. ID repetido rejeita somente a ocorrência posterior no nível do item; o lote continua. Datas não têm hora/fuso. Valores estão em reais. Sem limite artificial de quantidade de itens nesta versão.
 
 ### Saída de sucesso
-Objeto com versao_spec (texto), colaborador e periodo preservados, avisos (lista de códigos), items (lista em ordem original) e resumo (objeto). Índices são zero-based e identificam o item mesmo quando seu id está ausente. Valores monetários de saída são números não negativos de até duas casas, exceto valor_original, preservado como número da entrada quando válido; zeros à direita não são obrigatórios.
+Objeto com `versao_spec: "0.2"`, colaborador e período usados no processamento, avisos (lista de códigos), `items` (lista em ordem original) e `resumo`. Índices são zero-based. ID ausente é gerado como `gerado-{índice}`; em colisão normalizada, tentar `gerado-{índice}-1`, `-2` etc. O índice original inclui todos os itens da entrada. ID fornecido é preservado exatamente na saída; para comparação, remover espaços ASCII das extremidades e ignorar diferença entre maiúsculas/minúsculas. ID inválido presente retorna `id: null`; nunca gerar ID para substituir um valor presente inválido. Valores monetários de saída têm até duas casas, exceto `valor_original`, preservado quando numericamente válido.
 
 | Campo de items[] | Tipo | Significado |
 |---|---|---|
 | indice | inteiro >= 0 | Posição no arquivo |
-| id | texto ou null | Identificador, null quando ausente/inválido |
+| id | texto ou null | ID original preservado; gerado quando ausente; null quando presente mas inválido |
 | valor_original | número ou null | Valor recebido se numericamente válido |
-| valor_solicitado | número | Valor positivo válido arredondado; senão 0 |
+| valor_solicitado | número | Valor positivo arredondado para itens estruturalmente válidos; para itens inválidos/zero-negativos, 0; itens duplicados e recusados por regra podem manter o valor arredondado |
 | categoria_normalizada | texto ou null | Valor normalizado se disponível |
 | valor_reembolsavel | número | Pagamento calculado |
 | status | texto enum | APROVADO, PARCIAL, RECUSADO, IGNORADO |
@@ -51,15 +51,15 @@ Objeto com versao_spec (texto), colaborador e periodo preservados, avisos (lista
 | duplicata_de_indice | inteiro ou null | Primeiro item equivalente |
 | avisos | lista de textos | DIARIAS_NAO_INFORMADAS quando hospedagem estruturalmente válida |
 
-Motivos permitidos: DADO_INVALIDO, DUPLICATA, ESTORNO_NAO_PROCESSADO, VALOR_ZERO, FORA_DA_COMPETENCIA, CATEGORIA_NAO_PREVISTA, NOTA_FISCAL_OBRIGATORIA, LIMITE_ESGOTADO, LIMITE_APLICADO, DENTRO_DO_LIMITE. Em DADO_INVALIDO, incluir erros como lista de {campo, codigo}, códigos CAMPO_OBRIGATORIO ou TIPO_OU_FORMATO_INVALIDO; demais itens usam erros: [].
+Motivos permitidos: `DADO_INVALIDO`, `DUPLICATA`, `ESTORNO_NAO_PROCESSADO`, `VALOR_ZERO`, `FORA_DA_COMPETENCIA`, `CATEGORIA_NAO_PREVISTA`, `NOTA_FISCAL_OBRIGATORIA`, `LIMITE_ESGOTADO`, `LIMITE_APLICADO`, `DENTRO_DO_LIMITE`. `erros` é sempre uma lista de `{campo, codigo}`; campos estruturais inválidos registram todos os erros em ordem fixa, usando `CAMPO_OBRIGATORIO`, `TIPO_OU_FORMATO_INVALIDO` ou `ID_REPETIDO`. Repetição de ID gera `status: RECUSADO`, `motivo: DADO_INVALIDO` e erro `ID_REPETIDO`. Duplicata por conteúdo com ID diferente gera `IGNORADO`/`DUPLICATA` e define `duplicata_de_indice`. Itens estruturalmente inválidos permanecem em `items`, mas não entram em `total_itens`, contagens por status nem totais financeiros.
 
-resumo contém total_itens; quantidades por status (aprovados, parciais, recusados, ignorados); total_solicitado, total_reembolsavel, total_nao_reembolsavel. Lista vazia resulta em todos os totais e contagens zero. Aviso global VIAGEM_NAO_INFORMADA consta em todo sucesso, inclusive lista vazia. Hospedagem acrescenta aviso por item, mesmo se recusada.
+`resumo` contém `total_itens`, quantidades por status (`aprovados`, `parciais`, `recusados`, `ignorados`), `total_solicitado`, `total_reembolsavel` e `total_nao_reembolsavel`. `total_itens` e contagens incluem somente despesas estruturalmente válidas, inclusive duplicatas por conteúdo, IDs repetidos e itens ignorados por valor zero/negativo; despesas estruturalmente inválidas ficam fora. `total_solicitado` soma valores arredondados de despesas estruturalmente válidas que chegam ao cálculo de elegibilidade antes dos limites; itens recusados por regra de negócio, duplicados, ignorados e estruturalmente inválidos são excluídos. `total_reembolsavel` soma pagamentos efetivos. `total_nao_reembolsavel = total_solicitado - total_reembolsavel`. Lista vazia resulta em totais e contagens zero. Aviso global `VIAGEM_NAO_INFORMADA` consta em todo sucesso, inclusive lista vazia. Hospedagem acrescenta aviso por item, mesmo se recusada.
 
-Falha de lote: objeto {versao_spec: "0.1", erro: {codigo, mensagem}}, sem items/resumo. Códigos: JSON_INVALIDO, ENTRADA_INVALIDA, IDS_REPETIDOS, ERRO_IO. Nenhuma saída financeira parcial em falha. Erro de leitura/escrita deve ser informado no canal de erro quando não for possível gravar resultado.
+Falha de lote: objeto `{versao_spec: "0.2", erro: {codigo, mensagem}}`, sem `items`/`resumo`. Códigos: `JSON_INVALIDO`, `ENTRADA_INVALIDA`, `ERRO_IO`. Chaves repetidas no mesmo objeto JSON causam `JSON_INVALIDO`; colaborador obrigatório incompleto/inválido ou envelope inválido causa `ENTRADA_INVALIDA`. IDs repetidos de despesa não causam falha de lote. Nenhuma saída financeira parcial em falha. Erro de leitura/escrita deve ser informado no canal de erro quando não for possível gravar resultado.
 
 Exemplo para uma alimentação válida de 61,00 com nota:
 ```json
-{"versao_spec":"0.1","colaborador":{"id":"c-1","nome":"Exemplo","centro_custo":"CC"},"periodo":{"competencia":"2026-07","inicio":"2026-07-01","fim":"2026-07-31"},"avisos":["VIAGEM_NAO_INFORMADA"],"items":[{"indice":0,"id":"x-1","valor_original":61,"valor_solicitado":61,"categoria_normalizada":"alimentacao","valor_reembolsavel":60,"status":"PARCIAL","motivo":"LIMITE_APLICADO","justificativa":"Aplicado limite diário de R$ 60,00.","duplicata_de_indice":null,"avisos":[],"erros":[]}],"resumo":{"total_itens":1,"aprovados":0,"parciais":1,"recusados":0,"ignorados":0,"total_solicitado":61,"total_reembolsavel":60,"total_nao_reembolsavel":1}}
+{"versao_spec":"0.2","colaborador":{"id":"c-1","nome":"Exemplo","centro_custo":"CC"},"periodo":{"competencia":"2026-07","inicio":"2026-07-01","fim":"2026-07-31"},"avisos":["VIAGEM_NAO_INFORMADA"],"items":[{"indice":0,"id":"x-1","valor_original":61,"valor_solicitado":61,"categoria_normalizada":"alimentacao","valor_reembolsavel":60,"status":"PARCIAL","motivo":"LIMITE_APLICADO","justificativa":"Aplicado limite diário de R$ 60,00.","duplicata_de_indice":null,"avisos":[],"erros":[]}],"resumo":{"total_itens":1,"aprovados":0,"parciais":1,"recusados":0,"ignorados":0,"total_solicitado":61,"total_reembolsavel":60,"total_nao_reembolsavel":1}}
 ```
 
 ## 5. Regras de negócio
@@ -90,12 +90,12 @@ Exemplo para uma alimentação válida de 61,00 com nota:
 **Aceite AC-005:** Corrida aeroporto 100,00 continua limitada a 80; hotel 480 continua limitado a 250.
 
 ### RN-006 — Competência
-**Regra:** Usar data da despesa, pois lançamento não existe. Aceitar inicio <= data <= fim. Inicio/fim devem ser válidos, ordenados e estar no mês competencia.
+**Regra:** Usar data da despesa, pois lançamento não existe. Aceitar `inicio <= data <= fim`. Datas de início e fim válidas e invertidas são trocadas automaticamente; a saída retorna o período corrigido efetivamente usado. As datas devem pertencer ao mês de competência. O tratamento de competência ausente/inválida, data inexistente ou incompatibilidade com o mês (exceto inversão válida) permanece em aberto na correção 69; não inferir comportamento adicional.
 **Origem:** Despesas devem ser lançadas dentro do período de competência. Evidência: d-008/d-014.
-**Aceite AC-006:** 2026-04-15 recusa; 2026-07-01 e 2026-07-31 aceitam no período de julho.
+**Aceite AC-006:** 2026-04-15 recusa; 2026-07-01 e 2026-07-31 aceitam no período de julho. Se `inicio` e `fim` forem datas válidas mas estiverem invertidas, trocar a ordem e retornar o período corrigido. Outros erros de período aguardam a correção 69.
 
 ### RN-007 — Identificação de duplicatas
-**Regra:** Comparar data, categoria normalizada, fornecedor e descrição exatos e valor decimal original equivalente. Ignorar id e tem_nota_fiscal na chave. Primeiro item estruturalmente válido é canônico, mesmo se recusado; posteriores pagam zero e referenciam seu índice.
+**Regra:** Validar estrutura antes de deduplicar. Para ID, remover espaços ASCII das extremidades e comparar sem diferenciar maiúsculas/minúsculas; preservar o texto original na saída. A primeira ocorrência estruturalmente válida de um ID é mantida; ocorrência posterior com o mesmo ID é `RECUSADO`/`DADO_INVALIDO`, com erro `ID_REPETIDO`, sem abortar o lote. IDs de itens estruturalmente inválidos não reservam o ID para deduplicação. Só entre IDs diferentes comparar conteúdo: data normalizada, categoria normalizada, fornecedor e descrição normalizados por Unicode NFC + trim ASCII nas extremidades + comparação sem diferença de caixa, e valor arredondado a duas casas (RN-009). Não considerar `tem_nota_fiscal` nem campos extras. O primeiro item estruturalmente válido com aquele conteúdo é canônico mesmo se recusado por regra de negócio; posterior é `IGNORADO`/`DUPLICATA`, `valor_reembolsavel: 0` e `duplicata_de_indice` aponta ao canônico.
 **Origem:** Duplicatas devem ser tratadas. Evidência: d-006/d-007.
 **Aceite AC-007:** d-006 paga 54,90; d-007 é ignorado com referencia ao índice 5.
 
@@ -130,9 +130,9 @@ Exemplo para uma alimentação válida de 61,00 com nota:
 **Aceite AC-013:** temNotaFiscal sem tem_nota_fiscal invalida item; false é válido, string false não.
 
 ### RN-014 — Falhas de entrada
-**Regra:** JSON inválido, chaves JSON repetidas, envelope inválido ou IDs de despesa repetidos abortam lote. Item com campo obrigatório ausente/tipo inválido é recusado com DADO_INVALIDO; demais continuam. ID ausente gera id null e usa índice.
+**Regra:** JSON inválido e chaves repetidas em objeto JSON causam falha de lote `JSON_INVALIDO`; envelope inválido ou qualquer campo obrigatório de `colaborador` ausente, vazio ou de tipo incorreto causa `ENTRADA_INVALIDA`. Despesas são validadas individualmente: registrar todos os erros estruturais em ordem determinística e recusar uma única vez com `RECUSADO`/`DADO_INVALIDO`; continuar o lote. ID ausente gera ID determinístico baseado no índice original; ID presente inválido é `null` e não é substituído por ID gerado. ID repetido em despesa estruturalmente válida rejeita apenas a ocorrência posterior, com erro `ID_REPETIDO`. Campos extras são ignorados.
 **Origem:** Entrada de referência define forma, mas não recuperação. Evidência: Caso adicional.
-**Aceite AC-014:** Item valor string 60 recusa; próximo item válido paga normalmente. IDs repetidos abortam.
+**Aceite AC-014:** Item com valor string `60` é recusado e o próximo item válido é processado; ID repetido recusa somente a ocorrência posterior com `ID_REPETIDO`; JSON com chaves repetidas rejeita o lote com `JSON_INVALIDO`; colaborador incompleto rejeita o lote com `ENTRADA_INVALIDA`.
 
 ### RN-015 — Precedência e motivos
 **Regra:** Aplicar a ordem da seção 8; emitir um motivo principal, avisos separados. Duplicatas podem referenciar item recusado.
@@ -142,13 +142,13 @@ Exemplo para uma alimentação válida de 61,00 com nota:
 ### RN-016 — Totais e status
 **Regra:** Solicitado soma todos os valores positivos estruturalmente válidos arredondados, inclusive duplicatas/recusas; reembolsável soma pagamentos; não reembolsável é diferença. Valores negativos/zero ignorados não entram. Contagens particionam itens.
 **Origem:** Schema de saída é definido pelo participante. Evidência: Todos os itens.
-**Aceite AC-016:** Total de referência solicitado 1861,84; reembolsável 585,43; não reembolsável 1276,41.
+**Aceite AC-016:** O resumo exclui recusas, duplicatas, ignorados e estruturalmente inválidos dos totais financeiros; `total_nao_reembolsavel` é a diferença entre solicitado e reembolsável. Os números do exemplo são recalculados na seção 9 e permanecem pendentes de validação automatizada.
 
 ### RN-017 — Contrato de execução
 CLI aceita calcular --input <arquivo> --output <arquivo>. Sucesso retorna código 0; entrada/lote inválido retorna 2; falha de I/O retorna 3. Não misturar logs com resultado. Uma mesma entrada produz saída financeira idêntica, sem depender da hora de execução. **AC-017:** executar com exemplo grava JSON coerente e retorna 0; arquivo inexistente retorna 3; JSON inválido retorna 2.
 
 ### RN-018 — Estrutura da saída
-Cada item gera exatamente um resultado; schema e invariantes da seção 4 são obrigatórios. **AC-018:** soma dos quatro status = total_itens = quantidade da entrada; soma pagamentos = total_reembolsavel; solicitado - reembolsável = não reembolsável; nenhum pagamento negativo ou maior que solicitado.
+Cada item gera exatamente um objeto em `items`; despesas estruturalmente inválidas permanecem na lista, mas ficam fora de `total_itens`, contagens e totais financeiros. **AC-018:** soma dos quatro status = `total_itens` (não necessariamente quantidade da entrada); soma dos pagamentos = `total_reembolsavel`; `total_solicitado - total_reembolsavel = total_nao_reembolsavel`; nenhum pagamento é negativo ou maior que o valor solicitado.
 
 ## 6. Ambiguidades identificadas e decisões
 As referências abaixo são uma análise própria, não a lista fechada do avaliador. Quando a política é silenciosa, isso está indicado na origem, sem atribuir ao RH um texto que ele não escreveu.
@@ -277,10 +277,10 @@ As referências abaixo são uma análise própria, não a lista fechada do avali
 | Alimentacao / ALIMENTACAO / alimentacao | Mesma categoria |
 | " alimentacao " | Aceita após remover espaços ASCII extremos |
 | alimentação / transporteUrbano | Categorias não previstas |
-| Categoria em maiúscula com ID idêntico | ID repetido invalida lote antes das regras de item |
-| Mesmo conteúdo, IDs diferentes | Segundo ignorado; comparação valor 54.90 = 54.9 |
-| Mesmo conteúdo com fornecedor em caixa diferente | Não duplicata, pois fornecedor é exato |
-| Valores 33,333 e 33,334, demais campos iguais | Não duplicatas, mesmo normalizando ambos a 33,33 |
+| ID repetido após trim ASCII e comparação sem caixa | Segunda ocorrência estruturalmente válida é RECUSADO/DADO_INVALIDO com ID_REPETIDO; lote continua |
+| Mesmo conteúdo, IDs diferentes | Segundo IGNORADO/DUPLICATA; valores são comparados após arredondamento a duas casas |
+| Mesmo conteúdo com fornecedor em caixa diferente | Duplicata após NFC, trim ASCII externo e comparação sem diferença de caixa |
+| Valores 10,004 e 10,00, demais campos iguais | Podem ser duplicatas porque a comparação usa valores arredondados |
 | Canônico sem nota, repetição com nota | Canônico recusado; posterior ignorado; nenhum paga |
 | Item inválido antes de cópia válida | Inválido não vira canônico; válido pode pagar |
 | Despesa fora do mês e sem nota | FORA_DA_COMPETENCIA prevalece |
@@ -289,27 +289,28 @@ As referências abaixo são uma análise própria, não a lista fechada do avali
 | Dia inicial/final / um dia fora | Aceita/aceita/recusa |
 | Campo booleano com valor "false" | DADO_INVALIDO |
 | despesas vazia | Sucesso e totais zero |
-| Período cruzando meses | Lote inválido nesta versão |
+| Datas inicial/final invertidas e válidas | Trocar automaticamente e retornar o período corrigido; outros erros de período aguardam decisão 69 |
 
 ## 8. Ordem de aplicação das regras
-1. Validar JSON e envelope; checar IDs repetidos válidos antes de avaliar itens. Falha aborta lote.
-2. Validar campos de cada item. Inválido: RECUSADO/DADO_INVALIDO, solicitado zero; não participa da deduplicação.
-3. Normalizar categoria e quantizar valor, preservar original. Identificar e registrar primeiro canônico pela chave RN-007, inclusive negativos e zeros. Repetição: IGNORADO/DUPLICATA, solicitado positivo continua no total.
-4. Valor original negativo: IGNORADO/ESTORNO_NAO_PROCESSADO. Valor original zero ou positivo arredondado zero: IGNORADO/VALOR_ZERO.
-5. Verificar competência; fora: RECUSADO/FORA_DA_COMPETENCIA.
-6. Verificar categoria; desconhecida: RECUSADO/CATEGORIA_NAO_PREVISTA.
-7. Verificar nota sobre valor original; falta obrigatória: RECUSADO/NOTA_FISCAL_OBRIGATORIA.
-8. Aplicar somente teto base, conforme RN-005/RN-010; consumir saldo diário por categoria na ordem de entrada. Pagamento integral positivo: APROVADO/DENTRO_DO_LIMITE; entre zero e solicitado: PARCIAL/LIMITE_APLICADO; zero: RECUSADO/LIMITE_ESGOTADO.
-9. Consolidar totais e avisos. Somente pagamentos consomem saldo; saldos não transitam entre datas/categorias.
+1. Fazer parsing JSON estrito; qualquer chave repetida em qualquer objeto causa `JSON_INVALIDO` e rejeita o lote inteiro, sem resultado financeiro parcial.
+2. Validar envelope e colaborador. Se qualquer campo obrigatório de `colaborador` estiver ausente, vazio ou com tipo incorreto, rejeitar lote inteiro com `ENTRADA_INVALIDA`.
+3. Validar período conforme RN-006. Trocar datas inicial/final invertidas quando ambas forem datas válidas; retornar as datas corrigidas. Não presumir tratamento para outros erros de período enquanto a correção 69 estiver em aberto.
+4. Preparar conjunto de IDs normalizados de todos os IDs fornecidos em despesas, inclusive IDs presentes em despesas estruturalmente inválidas, apenas para evitar colisão com IDs gerados. Normalização de comparação: trim ASCII nas extremidades + comparação sem diferença de caixa.
+5. Percorrer despesas na ordem original e gerar o ID se o campo estiver ausente: `gerado-{índice}`; se colidir com ID fornecido ou já gerado, tentar `gerado-{índice}-1`, depois `-2` e assim por diante. Índice é zero-based na lista original. Se `id` estiver presente mas vazio, só espaços ASCII ou tipo incorreto, não gerar substituto: `id: null` e erro estrutural.
+6. Validar a estrutura de cada despesa em ordem fixa de campos: ID; demais campos obrigatórios na ordem do schema; por último campos opcionais definidos. Registrar todos os erros encontrados independentemente da ordem das chaves JSON. Item inválido recebe `RECUSADO`/`DADO_INVALIDO`, fica em `items`, não reserva ID e não entra em `total_itens`, contagens ou totais financeiros.
+7. Para despesa estruturalmente válida, verificar repetição de ID antes de deduplicação por conteúdo. A primeira ocorrência estruturalmente válida do ID é a referência; a posterior recebe `RECUSADO`/`DADO_INVALIDO`, `erros: [{campo: "id", codigo: "ID_REPETIDO"}]`, é contada em `total_itens` e `recusados`, não entra em totais financeiros, e o lote continua.
+8. Para IDs distintos, normalizar categoria, data, fornecedor (NFC + trim ASCII externo + sem diferença de caixa), descrição (mesma regra) e valor arredondado a duas casas. Não comparar `tem_nota_fiscal` nem campos extras. Duplicata de conteúdo recebe `IGNORADO`/`DUPLICATA`, valor arredondado preservado em `valor_solicitado`, reembolso zero e referência ao primeiro item estruturalmente válido com aquele conteúdo, mesmo que tenha sido recusado por regra de negócio. Conta em `total_itens`/`ignorados`, não entra em totais financeiros.
+9. Aplicar regras de negócio aos itens restantes na ordem definida: quantizar valor (metade para cima), ignorar negativos (`ESTORNO_NAO_PROCESSADO`) e valores zero/após arredondamento (`VALOR_ZERO`) com valores solicitados e reembolsáveis iguais a zero; verificar competência, categoria, nota fiscal; então aplicar os limites diários base e consumir saldo na ordem de entrada. Itens estruturalmente válidos recusados por regra de negócio mantêm `valor_solicitado` arredondado, mas são excluídos de totais financeiros. Itens válidos ignorados por zero/negativo contam nos status e em `total_itens`, mas não nos totais financeiros.
+10. Calcular resumo: `total_itens` e contagens apenas de itens estruturalmente válidos; `total_solicitado` soma somente valores elegíveis que chegam ao cálculo de limites; excluir recusados, duplicatas, ignorados e estruturalmente inválidos. `total_reembolsavel` soma pagamentos; `total_nao_reembolsavel = total_solicitado - total_reembolsavel`. Preservar ordem original de `items` e retornar `periodo` corrigido quando houver inversão automática.
 
 ## 9. Critérios de aceite
-- [ ] AC-001 a AC-018 e casos de borda passam conforme decisões adotadas.
-- [ ] Os 14 itens do exemplo geram a tabela e os totais da seção abaixo.
+- [ ] AC-001 a AC-018 e os casos de borda estão associados a testes automatizados identificáveis; não marcar como validados antes da execução e aprovação dos testes.
+- [ ] Os 14 itens do exemplo geram os resultados recalculados abaixo; são resultados esperados da proposta, não gabarito oficial nem execução validada.
 - [ ] Campos ausentes, erros fiscais e duplicatas não desaparecem da saída.
 - [ ] JSON de entrada não muda de contrato para acomodar viagem/diárias.
 - [ ] Nenhum conhecimento externo é necessário para calcular a saída.
 
-### Resultado calculado do exemplo (sob esta proposta)
+### Resultado esperado recalculado do exemplo (proposta; ainda não validado por execução de testes)
 | Item | Solicitado | Reembolsável | Status | Motivo |
 |---|---:|---:|---|---|
 | d-001 |72,50|60,00|PARCIAL|LIMITE_APLICADO|
@@ -327,7 +328,27 @@ As referências abaixo são uma análise própria, não a lista fechada do avali
 | d-013 |690,00|0,00|RECUSADO|NOTA_FISCAL_OBRIGATORIA|
 | d-014 |61,00|60,00|PARCIAL|LIMITE_APLICADO|
 
-14 itens: 3 aprovados, 4 parciais, 5 recusados, 2 ignorados. Solicitado 1861,84; reembolsável 585,43; não reembolsável 1276,41. Esses números são derivados da proposta, não de um gabarito oficial ou execução de produto existente.
+Contagens dos 14 itens estruturalmente válidos: 3 aprovados, 4 parciais, 5 recusados, 2 ignorados. `total_solicitado` esperado: 848,93; `total_reembolsavel`: 585,43; `total_nao_reembolsavel`: 263,50. São cálculos derivados das regras propostas e precisam ser confirmados pelos testes automatizados; não são gabarito oficial nem execução validada.
 
 ## 10. O que fica em aberto
-nada em aberto 
+- **Mudança do Dia 2:** requisito ainda não recebido; revisar regras e testes relacionados quando estiver disponível.
+- **Correção 69 — período inválido:** decisão ainda não tomada para competência ausente/inválida, datas inexistentes ou datas incompatíveis com o mês de competência. A única decisão já tomada é trocar datas inicial/final válidas quando estiverem invertidas e retornar o período corrigido.
+- **Execução de testes:** os critérios e vínculos de rastreabilidade são requisitos de trabalho; nenhum teste deve ser marcado como validado até execução e aprovação reais.
+
+## 11. Rastreabilidade e testes
+Cada critério de aceite deve estar ligado a uma regra de negócio e a um teste automatizado identificável. A tabela abaixo define o vínculo funcional; o identificador concreto do arquivo de teste deve corresponder à suíte real do repositório e não deve ser inventado antes de inspecioná-la.
+
+| Critério | Regra(s) | Teste automatizado | Estado |
+|---|---|---|---|
+| AC-001 a AC-012 | RN-001 a RN-012 | Identificador da suíte correspondente a confirmar no repositório | Pendente de inspeção/execução |
+| AC-013 | RN-013 | Teste de chaves exatas, campos extras e booleanos | Pendente de inspeção/execução |
+| AC-014 | RN-014 | Testes de JSON inválido, chaves repetidas, envelope, colaborador incompleto, ID gerado/ inválido/repetido e validação de item | Pendente de inspeção/execução |
+| AC-015 | RN-015 | Teste de precedência de motivos e consumo de saldo | Pendente de inspeção/execução |
+| AC-016 | RN-016, RN-018 | Teste de resumo e exclusões dos totais | Pendente de inspeção/execução |
+| AC-017 | RN-017 | Testes CLI de sucesso, entrada inválida e erro de I/O | Pendente de inspeção/execução |
+| AC-018 | RN-018 | Teste de invariantes de saída | Pendente de inspeção/execução |
+| AC-019 | RN-014 | Chaves JSON repetidas rejeitam lote com `JSON_INVALIDO`, sem resultado parcial | Pendente de criar/verificar teste |
+| AC-020 | RN-014 | Colaborador incompleto rejeita lote com `ENTRADA_INVALIDA` | Pendente de criar/verificar teste |
+| AC-021 | RN-006 | Inversão de datas válidas é corrigida e período corrigido é retornado | Pendente de criar/verificar teste |
+
+AMB-001–AMB-016 → RN correspondente → AC da regra → teste automatizado: manter esse encadeamento explícito. Quando uma AMB não tiver relação direta com um AC, registrar “sem relação direta” em vez de criar vínculo artificial. 
