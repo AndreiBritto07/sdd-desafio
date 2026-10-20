@@ -1,217 +1,184 @@
-# Backlog de implementação: motor de reembolso
+# Backlog de implementação — motor de reembolso
 
-**Versão:** 0.2 · **Data:** 2026-10-20
-**Base:** `spec.md` v0.2 e `DECISIONS.md` v0.2, ambos propostos.
-**Regra:** cada tarefa cabe em um commit focado. Os nomes de teste são identificadores propostos e devem ser adaptados à convenção do repositório, sem perder cobertura.
-**Estado:** nenhum critério é marcado como concluído sem execução real registrada.
+**Base:** `spec.md` v0.2 (proposta) e `DECISIONS.md` (decisões propostas).  
+**Formato:** cada tarefa deve caber em um commit pequeno, independente sempre que possível. Os nomes de testes abaixo são identificadores sugeridos; adapte-os à convenção existente no repositório sem perder a cobertura descrita.  
+**Estado:** especificação e decisões ainda precisam de aprovação formal. Não marcar critérios como concluídos sem executar os testes.
 
 ## Regras para concluir uma tarefa
 
-- Alteração focada, com testes escritos junto ao código.
-- Executar o teste de aceite e os testes relacionados, e registrar o resultado real.
-- Não alterar regras fora do escopo da tarefa.
-- Manter `spec.md`, `DECISIONS.md` e a rastreabilidade (seção 11 da spec) consistentes.
+- Fazer uma alteração focada e criar/atualizar testes automatizados junto com o código.
+- Executar o teste indicado e os testes relacionados; registrar o resultado real.
+- Não alterar regras de negócio fora do escopo da tarefa.
+- Manter `spec.md`, `DECISIONS.md` e a matriz de rastreabilidade consistentes.
 
-## Pré-requisitos
+## Tarefas
 
-- **Correção 69:** bloqueia apenas os casos de competência ausente ou inválida e de datas inexistentes em `periodo`, que ficam em T-015. A comparação inclusiva de T-015 e a inversão de T-014 são liberadas (RN-006).
-- **Correção 70:** T-026 depende dela.
-- **Correção 71:** T-018 depende dela.
-- **Correção 72:** T-013 e T-016 dependem dela.
-- **Correções 73 e 74:** T-006 depende delas.
-- **Correção 75:** T-024 e T-026 seguem o escopo de totais definido em `DECISIONS.md`.
+### T-001 — Mapear a estrutura existente e executar a suíte-base
+- **O que faz:** identificar linguagem, módulos, comandos, convenções e testes existentes; executar a suíte sem mudar comportamento e registrar o resultado-base.
+- **Requisitos atendidos:** RN-017 (interface CLI, se já implementada); preparação para AC-001 a AC-021.
+- **Critério de aceite:** a suíte-base é executada e o resultado real fica registrado; se houver falha pré-existente, ela é reproduzível e documentada. Não exige que a suíte esteja verde antes das alterações.
 
-## Fundação
+### T-002 — Criar fixtures reutilizáveis de entrada e saída
+- **O que faz:** adicionar builders/fixtures mínimos para colaborador, período, despesas e respostas esperadas, seguindo o padrão de testes do projeto.
+- **Requisitos atendidos:** AC-001 a AC-021, como suporte à cobertura automatizada.
+- **Critério de aceite:** `test_fixtures_validas_podem_ser_carregadas` passa e os testes não dependem de copiar grandes blocos de JSON.
 
-**T-001 — Mapear o repositório e executar a suíte-base**
-- O que faz: identificar linguagem, módulos, comandos, convenções e testes existentes. Executar sem alterar comportamento.
-- Refs: suporte a AC-001 a AC-021.
-- Aceite: resultado-base registrado. Falhas pré-existentes são reproduzíveis e documentadas.
+### T-003 — Validar o envelope JSON básico
+- **O que faz:** validar a presença e os tipos dos campos de envelope definidos na spec, sem ainda implementar regras financeiras.
+- **Requisitos atendidos:** RN-001, RN-002; AC-001.
+- **Critério de aceite:** `test_entrada_valida_e_aceita` e `test_envelope_invalido_retorna_entrada_invalida` passam.
 
-**T-002 — Fixtures reutilizáveis**
-- O que faz: builders de colaborador, período, despesa e resposta esperada. Inclui os 14 itens do exemplo (spec §9).
-- Refs: suporte a todos os ACs; base para T-030.
-- Testes: `test_fixtures_validas_podem_ser_carregadas`.
+### T-004 — Rejeitar JSON malformado e chaves repetidas
+- **O que faz:** detectar JSON sintaticamente inválido e chaves duplicadas em objetos JSON, rejeitando o lote inteiro sem resultado financeiro parcial.
+- **Requisitos atendidos:** RN-001; AC-019; decisão 66.
+- **Critério de aceite:** `test_json_malformado_retorna_json_invalido` e `test_chave_json_repetida_rejeita_lote_inteiro` passam.
 
-## Contrato de entrada
+### T-005 — Validar campos obrigatórios do colaborador
+- **O que faz:** rejeitar o lote se qualquer campo obrigatório do colaborador estiver ausente, vazio ou com tipo incorreto.
+- **Requisitos atendidos:** RN-002; AC-020; decisão 67.
+- **Critério de aceite:** `test_colaborador_incompleto_retorna_entrada_invalida` passa para cada campo obrigatório e para ausência, vazio e tipo incorreto; nenhum resultado financeiro é retornado.
 
-**T-003 — Parser JSON estrito**
-- O que faz: rejeitar JSON inválido e chave repetida em qualquer objeto, com `JSON_INVALIDO` e sem resultado parcial.
-- Refs: RN-014; AC-019.
-- Testes: `test_json_malformado_retorna_json_invalido`, `test_chave_json_repetida_rejeita_lote`.
+### T-006 — Ignorar campos desconhecidos do envelope e da despesa
+- **O que faz:** aceitar campos extras não definidos, sem usá-los na validação, deduplicação ou cálculo.
+- **Requisitos atendidos:** RN-001, RN-003; decisões 62 e 63.
+- **Critério de aceite:** `test_campos_extras_no_envelope_sao_ignorados` e `test_campos_extras_na_despesa_nao_afetam_resultado` passam.
 
-**T-004 — Envelope e colaborador**
-- O que faz: validar presença e tipo de `colaborador.id`, `nome` e `centro_custo`, além de `periodo` e `despesas`. Qualquer falha rejeita o lote com `ENTRADA_INVALIDA`.
-- Refs: RN-014; AC-020.
-- Testes: `test_colaborador_incompleto_rejeita_lote` (ausente, vazio, só espaços e tipo incorreto, em cada campo); `test_envelope_invalido_retorna_entrada_invalida`.
+### T-007 — Validar tipos e formatos estruturais da despesa
+- **O que faz:** validar campos obrigatórios, datas, categoria, descrição, fornecedor, valor numérico finito e booleano da nota fiscal; não aceitar booleano ou string como valor numérico.
+- **Requisitos atendidos:** RN-003, RN-004; AC-002 a AC-005.
+- **Critério de aceite:** `test_despesa_com_tipo_ou_formato_invalido_e_recusada` passa para cada campo e tipo inválido.
 
-**T-005 — Chaves exatas, campos extras e booleano**
-- O que faz: ignorar campos extras na raiz, no envelope e nas despesas. `tem_nota_fiscal` é obrigatório e booleano real: ausente gera `CAMPO_OBRIGATORIO`; `"false"` gera `TIPO_OU_FORMATO_INVALIDO`. Aliases não substituem campos.
-- Refs: RN-013; AC-013.
-- Testes: `test_chaves_exatas_e_booleano`, `test_campos_extras_sao_ignorados`.
+### T-008 — Retornar todos os erros estruturais em ordem determinística
+- **O que faz:** acumular os erros estruturais aplicáveis em `erros`, seguindo a ordem fixa de campos e validações da spec, independentemente da ordem das chaves JSON.
+- **Requisitos atendidos:** RN-004; decisões 59, 60 e 61.
+- **Critério de aceite:** `test_erros_estruturais_sao_completos_e_ordenados` e `test_ordem_dos_erros_independe_da_ordem_json` passam.
 
-**T-006 — Validação estrutural da despesa**
-- O que faz: validar campos obrigatórios, datas, categoria, descrição, fornecedor e valor numérico finito. Registrar todos os erros em `erros`, em ordem fixa (spec §8, passo 6). String só com espaços gera `CAMPO_OBRIGATORIO` (correção 73). Data inexistente gera `TIPO_OU_FORMATO_INVALIDO` (correção 74).
-- Refs: RN-014; AC-014.
-- Testes: `test_entrada_invalida_por_item`, `test_erros_estruturais_ordenados`, `test_ordem_dos_erros_independe_da_ordem_json`, `test_string_so_espacos_e_campo_obrigatorio`, `test_data_inexistente_e_erro_estrutural`.
+### T-009 — Manter despesa estruturalmente inválida na saída
+- **O que faz:** incluir a despesa inválida em `items`, com `RECUSADO`, motivo `DADO_INVALIDO`, erros e `id: null` quando o ID informado for inválido; excluí-la de contagens e totais.
+- **Requisitos atendidos:** RN-004, RN-005; decisões 7, 25, 36, 38 e 59.
+- **Critério de aceite:** `test_despesa_estruturalmente_invalida_permanece_em_items` e `test_despesa_invalida_nao_entra_em_resumo` passam.
 
-**T-007 — Despesa estruturalmente inválida na saída**
-- O que faz: manter a despesa inválida em `items` com `RECUSADO`, motivo `DADO_INVALIDO`, `erros` preenchidos e `id: null` quando o ID informado for inválido. Excluí-la de `recusados`, `total_itens` e totais.
-- Refs: RN-014, RN-018; AC-014.
-- Testes: `test_despesa_invalida_permanece_em_items`, `test_despesa_invalida_fora_do_resumo`.
+### T-010 — Gerar ID somente quando o campo estiver ausente
+- **O que faz:** gerar `gerado-{índice_original}` apenas quando a propriedade `id` não existir; ID presente vazio, só com espaços ou de tipo incorreto é inválido e não deve ser substituído.
+- **Requisitos atendidos:** RN-005; decisões 1, 8, 23 e 38.
+- **Critério de aceite:** `test_id_ausente_e_gerado` e `test_id_presente_invalido_nao_e_substituido` passam.
 
-## Identificadores
+### T-011 — Garantir índice original e unicidade dos IDs gerados
+- **O que faz:** usar índice zero-based da lista original e evitar colisões com todos os IDs fornecidos, inclusive em despesas estruturalmente inválidas, e com IDs já gerados; aplicar sufixos `-1`, `-2` etc.
+- **Requisitos atendidos:** RN-005; decisões 8, 17, 18, 39, 47 e 50.
+- **Critério de aceite:** `test_id_gerado_usa_indice_original` e `test_id_gerado_resolve_colisoes_com_sufixo` passam.
 
-**T-008 — Gerar ID somente quando ausente**
-- O que faz: gerar `gerado-{índice}` apenas quando `id` não existe. ID presente inválido resulta em `id: null`, sem substituto.
-- Refs: RN-014; AC-014.
-- Testes: `test_id_ausente_e_gerado`, `test_id_presente_invalido_nao_e_substituido`.
+### T-012 — Normalizar IDs apenas para comparação
+- **O que faz:** comparar IDs após remover espaços ASCII das extremidades e ignorar diferenças entre maiúsculas/minúsculas, preservando o ID original válido na saída.
+- **Requisitos atendidos:** RN-005; decisões 32, 33, 37 e 39.
+- **Critério de aceite:** `test_id_com_espacos_e_caixa_diferente_e_repetido` e `test_id_original_e_preservado_na_saida` passam.
 
-**T-009 — Unicidade dos IDs gerados**
-- O que faz: usar o índice zero-based da lista completa. Evitar colisão com todos os IDs fornecidos (inclusive de itens inválidos) e com IDs já gerados. Sufixos `-1`, `-2` etc.
-- Refs: RN-014; AC-014.
-- Testes: `test_id_gerado_usa_indice_original`, `test_id_gerado_resolve_colisoes_com_sufixo`.
+### T-013 — Rejeitar ocorrências posteriores de ID repetido
+- **O que faz:** manter a primeira despesa estruturalmente válida; marcar a ocorrência posterior como `RECUSADO`/`DADO_INVALIDO`, incluindo `ID_REPETIDO` em `erros`; continuar processando o lote.
+- **Requisitos atendidos:** RN-006; decisões 6, 21, 26, 29, 30, 34, 35, 40 e 46.
+- **Critério de aceite:** `test_id_repetido_recusa_somente_ocorrencia_posterior` e `test_id_repetido_nao_aborta_lote` passam.
 
-**T-010 — ID repetido e normalização de ID**
-- O que faz: comparar IDs com trim ASCII e sem diferença de caixa, preservando o ID original na saída. A ocorrência posterior é `RECUSADO` com motivo `ID_REPETIDO` e `erros` vazio. O lote continua.
-- Refs: RN-007, RN-014; AC-014.
-- Testes: `test_id_repetido_recusa_somente_ocorrencia_posterior`, `test_id_com_espacos_e_caixa_diferente_e_repetido`, `test_id_original_e_preservado_na_saida`.
+### T-014 — Implementar arredondamento monetário half-up
+- **O que faz:** centralizar o arredondamento de valores monetários para duas casas decimais usando half-up, sem depender do arredondamento binário padrão da linguagem.
+- **Requisitos atendidos:** RN-007; decisão 55.
+- **Critério de aceite:** `test_valores_monetarios_usam_half_up` passa para casos de empate, positivos e negativos conforme permitido pela spec.
 
-## Valores e categoria
+### T-015 — Implementar regras de elegibilidade básica da despesa
+- **O que faz:** aplicar regras para valor zero/negativo, estorno, competência, categoria e nota fiscal obrigatória, conforme precedência da spec.
+- **Requisitos atendidos:** RN-008 a RN-012; AC correspondentes às regras de negócio.
+- **Critério de aceite:** `test_regras_de_elegibilidade` passa com pelo menos um caso positivo e um negativo por regra.
 
-**T-011 — Arredondamento half-up**
-- O que faz: centralizar o arredondamento monetário a duas casas, metade para cima, sem depender do arredondamento binário padrão da linguagem.
-- Refs: RN-009; AC-009.
-- Testes: `test_arredondamento_half_up` (empates, positivos e 0,004).
+### T-016 — Normalizar datas para comparação e validar competência
+- **O que faz:** interpretar datas válidas, comparar datas normalizadas e garantir compatibilidade com a competência, sem inferir datas a partir de texto livre.
+- **Requisitos atendidos:** RN-002, RN-009; decisões 57 e 64–65.
+- **Critério de aceite:** `test_datas_validas_sao_normalizadas_para_comparacao` passa; `test_data_despesa_malformada_recusa_somente_item` e `test_data_despesa_inexistente_recusa_somente_item` confirmam que apenas o item inválido é recusado e o lote continua; `test_data_fora_da_competencia_recusa_somente_item` confirma `FORA_DA_COMPETENCIA` e processamento das demais despesas. Competência inválida e datas de início/fim do período inválidas permanecem bloqueadas até decisão específica.
 
-**T-012 — Normalização de categoria**
-- O que faz: trim ASCII e A-Z para a-z no campo `categoria`. Aceitos apenas `alimentacao`, `transporte_urbano` e `hospedagem`. Sem aliases.
-- Refs: RN-011; AC-011.
-- Testes: `test_normalizacao_categoria`.
+### T-017 — Corrigir período invertido e devolver o período efetivo
+- **O que faz:** para datas válidas e compatíveis com a competência, trocar início/fim quando `inicio > fim` e devolver no resultado as datas efetivamente usadas.
+- **Requisitos atendidos:** RN-002; AC-021; decisões 64 e 65.
+- **Critério de aceite:** `test_periodo_invertido_e_trocado_na_saida` passa; `test_periodo_ja_ordenado_permanece_igual` passa.
 
-**T-013 — Valor zero e negativo**
-- O que faz: negativo: `IGNORADO` com motivo `ESTORNO_NAO_PROCESSADO`. Zero: `IGNORADO` com motivo `VALOR_ZERO`. Solicitado e reembolsável zerados. Fora da deduplicação (correção 72).
-- Refs: RN-008; AC-008, AC-009.
-- Testes: `test_estorno_nao_processado`, `test_valor_zero_ou_negativo_fica_zerado_no_resultado`.
+### T-018 — Comparar conteúdo para detectar despesas duplicadas
+- **O que faz:** detectar duplicidade entre despesas estruturalmente válidas com IDs diferentes, comparando os campos definidos na spec: fornecedor/descrição com NFC, trim ASCII e comparação sem diferença de caixa; categoria normalizada; data normalizada; valor arredondado; ignorar `tem_nota_fiscal`.
+- **Requisitos atendidos:** RN-006, RN-007; decisões 22, 26, 40, 53–58.
+- **Critério de aceite:** `test_despesas_com_mesmo_conteudo_sao_duplicadas` e `test_campos_excluidos_nao_alteram_duplicidade` passam.
 
-## Período
+### T-019 — Marcar duplicidade de conteúdo e apontar item canônico
+- **O que faz:** manter a primeira despesa estruturalmente válida como canônica; marcar a seguinte como `IGNORADO`/`DUPLICATA`, preencher `duplicata_de_indice` e zerar o reembolso.
+- **Requisitos atendidos:** RN-006; decisões 16, 41, 51 e 52.
+- **Critério de aceite:** `test_duplicata_aponta_primeiro_indice_valido` e `test_duplicata_tem_reembolso_zero` passam, inclusive quando o item canônico for recusado por regra de negócio.
 
-**T-014 — Inversão de período**
-- O que faz: quando `inicio` e `fim` são datas válidas e `inicio > fim`, trocar e devolver o período corrigido. Não trata datas inexistentes nem competência ausente (correção 69).
-- Refs: RN-006; AC-021.
-- Testes: `test_periodo_invertido_e_corrigido`, `test_periodo_ja_ordenado_permanece_igual`.
+### T-020 — Aplicar limites de reembolso
+- **O que faz:** calcular valor reembolsável conforme limites por categoria e regras de limite esgotado/aplicado, sem gerar valor negativo ou superior ao solicitado.
+- **Requisitos atendidos:** RN-010, RN-011; AC das regras de limite.
+- **Critério de aceite:** `test_limite_categoria_aplica_reembolso_parcial` e `test_limite_esgotado_nao_reembolsa` passam.
 
-**T-015 — Competência inclusiva**
-- O que faz: aceitar `inicio <= data <= fim` e recusar com `FORA_DA_COMPETENCIA` quando a data estiver fora do intervalo.
-- Refs: RN-006; AC-006.
-- Bloqueio parcial: casos de competência ausente ou inválida, datas inexistentes em `periodo` e incompatibilidade com o mês dependem da correção 69. Não implementar esses casos antes da decisão. A comparação inclusiva está liberada.
-- Testes: `test_competencia_inclusiva`.
+### T-021 — Não inferir viagem ou diárias a partir de texto livre
+- **O que faz:** não aplicar aumento de limite por viagem sem evidência estruturada; emitir aviso `VIAGEM_NAO_INFORMADA` em toda resposta de sucesso; para hotel, avisar quando diárias não forem informadas e não extrair noites da descrição.
+- **Requisitos atendidos:** RN-013, RN-014; decisões 4 e 20.
+- **Critério de aceite:** `test_aviso_viagem_presente_em_sucesso` e `test_descricao_nao_define_numero_de_diarias` passam.
 
-## Regras de negócio
+### T-022 — Contabilizar uma diária por data para o mesmo colaborador
+- **O que faz:** evitar contar mais de uma diária de hotel na mesma data para o mesmo colaborador, conforme regra da spec.
+- **Requisitos atendidos:** RN-014.
+- **Critério de aceite:** `test_hotel_nao_duplica_diaria_na_mesma_data` passa.
 
-**T-016 — Deduplicação por conteúdo**
-- O que faz: entre IDs diferentes e valores positivos, comparar data normalizada, categoria normalizada, fornecedor e descrição (NFC, trim ASCII externo, sem diferença de caixa) e valor arredondado a duas casas. Ignorar `tem_nota_fiscal` e campos extras.
-- Refs: RN-007; AC-007.
-- Testes: `test_duplicata_conteudo_com_ids_diferentes`, `test_campos_excluidos_nao_alteram_duplicidade`, `test_fornecedor_com_caixa_diferente_e_duplicata`.
+### T-023 — Preservar valores exibidos em despesas recusadas ou ignoradas
+- **O que faz:** aplicar os campos monetários de saída definidos para despesas estruturalmente válidas recusadas por regra de negócio, duplicadas, zero ou negativas; manter `valor_original` quando aplicável e excluir os valores desses itens dos totais financeiros.
+- **Requisitos atendidos:** RN-005 a RN-008; decisões 41, 42, 48 e 49.
+- **Critério de aceite:** `test_despesa_recusada_preserva_solicitado_mas_nao_soma` e `test_valor_zero_ou_negativo_fica_zerado_no_resultado` passam.
 
-**T-017 — Canônico e duplicata**
-- O que faz: o primeiro item válido com o conteúdo é canônico, mesmo se depois for recusado. As cópias são `IGNORADO` com motivo `DUPLICATA`, com reembolso zero e `duplicata_de_indice` apontando para o canônico.
-- Refs: RN-007; AC-007.
-- Testes: `test_duplicata_aponta_canonico`, `test_canonico_recusado_nao_paga_copia`, `test_item_invalido_nao_vira_canonico`.
+### T-024 — Calcular resumo e contagens com o conjunto correto de itens
+- **O que faz:** calcular `total_itens` e contagens de status apenas para despesas estruturalmente válidas; manter inválidas em `items`, mas fora das contagens e totais.
+- **Requisitos atendidos:** RN-015; decisões 25, 28, 36, 46, 48 e 51.
+- **Critério de aceite:** `test_total_itens_e_status_excluem_invalidas_estruturais` passa e a soma das contagens coincide com `total_itens`.
 
-**T-018 — Precedência de motivos**
-- O que faz: aplicar a ordem da spec §8 (correção 71). Um motivo principal por item.
-- Refs: RN-015; AC-015.
-- Testes: `test_precedencia_motivos`, `test_fora_da_competencia_prevalece_sobre_nota`.
+### T-025 — Calcular totais financeiros e invariantes
+- **O que faz:** calcular `total_solicitado` somente para despesas válidas que chegam ao cálculo de elegibilidade antes dos limites; calcular `total_reembolsavel` pela soma dos pagamentos; calcular `total_nao_reembolsavel = total_solicitado - total_reembolsavel`.
+- **Requisitos atendidos:** RN-015, RN-018; decisões 3, 12, 27, 44 e 45.
+- **Critério de aceite:** `test_totais_excluem_recusadas_duplicadas_ignoradas_e_invalidas` e `test_invariantes_financeiros_do_resumo` passam.
 
-**T-019 — Nota fiscal obrigatória**
-- O que faz: exigir nota quando o valor original positivo, antes de arredondar e limitar, for estritamente maior que R$ 100.
-- Refs: RN-004; AC-004.
-- Testes: `test_nota_fiscal_acima_de_100`, `test_100_004_sem_nota_e_recusado`.
+### T-026 — Montar saída estável e incluir versão da especificação
+- **O que faz:** retornar `versao_spec: "0.2"` em sucesso e em erros de lote quando a estrutura de resposta se aplicar; preservar ordem original de `items` e incluir avisos, resultado e resumo conforme contrato.
+- **Requisitos atendidos:** RN-016; decisão 31.
+- **Critério de aceite:** `test_versao_spec_e_ordem_dos_items` passa para sucesso e erro de lote.
 
-**T-020 — Dias civis e categoria fora da política**
-- O que faz: aplicar as regras a sábados, domingos e feriados, sem restrição de dias úteis. Recusar com `CATEGORIA_NAO_PREVISTA` categorias fora do vocabulário.
-- Refs: RN-011, RN-012; AC-011, AC-012.
-- Testes: `test_fim_de_semana_aplica_regras`, `test_categoria_nao_prevista_recusa`.
+### T-027 — Implementar contrato da CLI e códigos de saída
+- **O que faz:** suportar `calcular --input <arquivo> --output <arquivo>`, gravar saída no destino e distinguir sucesso, entrada inválida e erro de I/O pelos códigos definidos.
+- **Requisitos atendidos:** RN-017.
+- **Critério de aceite:** `test_cli_calcular_input_output` e `test_cli_codigos_de_saida` passam para códigos 0, 2 e 3.
 
-**T-021 — Limites diários**
-- O que faz: agregar por colaborador, data e categoria. Consumir o saldo na ordem de entrada. Igualdade ao teto é integral. Saldo zero recusa com `LIMITE_ESGOTADO`.
-- Refs: RN-001, RN-002, RN-003; AC-001, AC-002, AC-003.
-- Testes: `test_agregacao_diaria_alimentacao`, `test_distribuicao_teto_ordem_entrada`, `test_fronteira_limite_alimentacao`.
+### T-028 — Tratar erros de leitura e escrita da CLI
+- **O que faz:** produzir erro operacional claro quando o arquivo de entrada não puder ser lido ou a saída não puder ser gravada, sem apresentar sucesso falso.
+- **Requisitos atendidos:** RN-017.
+- **Critério de aceite:** `test_cli_arquivo_entrada_inexistente` e `test_cli_destino_sem_permissao` passam.
 
-**T-022 — Viagem sem acréscimo**
-- O que faz: não aplicar acréscimo de 50% por viagem. Emitir `VIAGEM_NAO_INFORMADA` em `avisos` do envelope, em todo sucesso, inclusive com lista vazia.
-- Refs: RN-005; AC-005.
-- Testes: `test_viagem_nao_aplica_acrescimo`, `test_aviso_viagem_presente_em_sucesso`.
+### T-029 — Transformar exemplos da spec em testes de regressão
+- **O que faz:** adicionar testes automatizados para os exemplos normativos da spec e recalcular os resultados esperados conforme as decisões registradas.
+- **Requisitos atendidos:** AC-001 a AC-021; decisões 19 e 5.
+- **Critério de aceite:** `test_exemplos_spec_v02` passa; os valores esperados são conferidos por cálculo/teste, não rotulados como validados antes da execução.
 
-**T-023 — Diárias de hospedagem**
-- O que faz: considerar uma diária por data e colaborador, compartilhada entre hospedagens. Limite de R$ 250. Emitir `DIARIAS_NAO_INFORMADAS` em `items[].avisos` de cada hospedagem estruturalmente válida. Não extrair número de texto livre.
-- Refs: RN-010; AC-010.
-- Testes: `test_diarias_nao_extraidas_do_texto`, `test_hotel_nao_duplica_diaria_na_mesma_data`.
+### T-030 — Completar a matriz de rastreabilidade
+- **O que faz:** mapear cada ambiguidade/decisão relevante para RN, AC e teste automatizado, indicando explicitamente quando não houver relação direta.
+- **Requisitos atendidos:** seção de rastreabilidade de `spec.md`; decisão 13.
+- **Critério de aceite:** `test_matriz_rastreabilidade_completa` ou verificação equivalente confirma que cada AC possui teste identificado e que referências inexistentes são detectadas.
 
-## Saída e totais
+### T-031 — Atualizar documentação de uso e exemplos da CLI
+- **O que faz:** documentar pré-requisitos, comando CLI, formato de entrada/saída, códigos de saída, avisos e como executar os testes.
+- **Requisitos atendidos:** RN-017 e critérios de entrega da spec.
+- **Critério de aceite:** os comandos documentados são executados em ambiente limpo e `test_documentacao_cli` (ou checklist automatizado equivalente) passa.
 
-**T-024 — Valores preservados em itens não elegíveis**
-- O que faz: manter `valor_solicitado` arredondado em itens recusados por regra e em duplicatas, sem contá-los nos totais. Seguir o escopo de totais da correção 75.
-- Refs: RN-016; AC-016.
-- Testes: `test_despesa_recusada_preserva_solicitado_mas_nao_soma`, `test_totais_excluem_nao_elegiveis`.
+### T-032 — Executar suíte completa e registrar evidências
+- **O que faz:** executar todos os testes após a implementação, corrigir regressões dentro do escopo e registrar comandos/resultados sem declarar testes não executados.
+- **Requisitos atendidos:** AC-001 a AC-021; RN-018.
+- **Critério de aceite:** a suíte completa passa; os invariantes de resumo passam; nenhuma AC fica sem teste ou com resultado não registrado.
 
-**T-025 — Resumo e contagens**
-- O que faz: `total_itens`, `aprovados`, `parciais`, `recusados` e `ignorados` contam apenas itens estruturalmente válidos. A soma das contagens é igual a `total_itens`.
-- Refs: RN-016, RN-018; AC-016, AC-018.
-- Testes: `test_total_itens_e_status_excluem_invalidas_estruturais`, `test_contagens_particionam_itens_validos`.
+## Pendências de especificação fora das tarefas executáveis
 
-**T-026 — Totais financeiros e invariantes**
-- O que faz: `total_solicitado` = soma de `valor_solicitado` de `APROVADO` e `PARCIAL` (correção 70). `total_reembolsavel` = soma dos pagamentos. `total_nao_reembolsavel` = diferença. Verificar que nenhum pagamento é negativo nem maior que o solicitado.
-- Refs: RN-016, RN-018; AC-016, AC-018.
-- Testes: `test_invariantes_financeiros`.
-
-**T-027 — Saída estável**
-- O que faz: `versao_spec: "0.2"` em sucesso e em falha de lote. `colaborador` e `periodo` (já corrigido) incluídos. Ordem original de `items`.
-- Refs: spec §4.2 e §4.3; suporte a AC-016 e AC-018.
-- Testes: `test_versao_spec_e_ordem_dos_items`, `test_saida_de_sucesso_contem_periodo_corrigido`.
-
-## CLI
-
-**T-028 — Contrato da CLI**
-- O que faz: `calcular --input <arquivo> --output <arquivo>`. Códigos `0`, `2` e `3`. Logs fora do JSON de resultado.
-- Refs: RN-017; AC-017.
-- Testes: `test_cli_codigos_de_saida`, `test_cli_calcular_input_output`, `test_mesma_entrada_mesma_saida` (determinismo de RN-017).
-
-**T-029 — Erros de leitura e escrita**
-- O que faz: erro operacional claro quando a entrada não pode ser lida ou a saída não pode ser gravada, sem sucesso falso. Em `ERRO_IO`, nenhum arquivo de saída é gravado e a mensagem vai para stderr. Em falha de lote, nenhum arquivo de saída parcial.
-- Refs: RN-017; AC-017; spec §4.3.
-- Testes: `test_cli_arquivo_entrada_inexistente`, `test_cli_destino_sem_permissao`, `test_falha_de_lote_nao_grava_saida_parcial`.
-
-## Verificação
-
-**T-030 — Exemplo da spec como regressão**
-- O que faz: transformar os 14 itens da spec §9 em teste de regressão. Comparar com a execução real.
-- Refs: suporte a AC-001 a AC-021; spec §9.
-- Testes: `test_exemplo_spec_v02`. Os valores são conferidos pela execução e não são marcados como validados antes dela.
-
-**T-031 — Matriz de rastreabilidade**
-- O que faz: confirmar que cada AC tem teste identificado e que referências inexistentes são detectadas. Confirmar que os IDs de tarefa citados na spec §11 existem neste backlog e que a spec §11 lista os mesmos testes deste documento.
-- Refs: spec §11; AMB-001 a AMB-016.
-- Testes: `test_matriz_rastreabilidade_completa` ou verificação equivalente.
-
-**T-032 — Documentação de uso**
-- O que faz: pré-requisitos, comando CLI, formato de entrada e saída, códigos de saída, avisos e como executar os testes.
-- Refs: RN-017.
-- Aceite: comandos documentados executados em ambiente limpo.
-
-**T-033 — Suíte completa**
-- O que faz: executar todos os testes, corrigir regressões dentro do escopo e registrar comandos e resultados.
-- Refs: AC-001 a AC-021; RN-018.
-- Aceite: suíte completa passa; nenhum AC sem teste ou sem resultado registrado.
-
-## Pendências fora das tarefas
-
-- **Correção 69:** competência ausente ou inválida, datas inexistentes e incompatibilidade com o mês. Não implementar política definitiva antes da decisão.
-- **Correção 75:** escopo de totais definido (ver `DECISIONS.md`). T-024 e T-026 seguem esse escopo, sem renomear campos.
-- **Dia 2:** requisito não recebido. Revisar `spec.md` e acrescentar tarefas quando chegar.
-- **Aprovação:** `spec.md` e `DECISIONS.md` seguem propostos até aprovação formal.
+- **Correção 69 (parcialmente resolvida):** data de despesa ausente/malformada/inexistente recusa somente o item como `DADO_INVALIDO`; data válida fora da competência recusa somente o item como `FORA_DA_COMPETENCIA`; em ambos os casos, o lote continua. Implementar e testar conforme RN-006. Permanecem pendentes competência ausente/inválida e datas de início/fim do período ausentes, inválidas ou inexistentes.
+- **Requisito do Dia 2:** recebido no envelope da Política v4; seus requisitos ainda precisam ser incorporados de forma integrada na próxima versão da spec e nas tarefas correspondentes.
+- **Aprovação:** `spec.md` v0.2 e `DECISIONS.md` permanecem propostas até aprovação formal.
 
 ## Definição de pronto
 
-A tarefa está concluída quando a alteração cabe em um commit focado, o teste de aceite passou, os testes relacionados continuam passando e a rastreabilidade foi atualizada. Escrever o teste ou o código não basta.
+Uma tarefa está concluída quando a alteração cabe em um commit focado, o teste de aceite indicado foi executado e passou, os testes relacionados continuam passando e a documentação/rastreabilidade foi atualizada quando necessário. Não marcar tarefa como concluída apenas por ter escrito o teste ou o código.
