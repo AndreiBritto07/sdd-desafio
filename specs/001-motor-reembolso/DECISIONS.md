@@ -2,7 +2,7 @@
 
 **Revisão documental:** 20/10/2026 — consolidação pós-Envelope 2  
 **Relacionamento:** sustenta spec.md v0.2 e tasks.md desta revisão.  
-**Estado:** decisões consolidadas para implementação; aprovação oficial e testes não presumidos.
+**Estado:** decisões normativas consolidadas; implementação e 16 testes aprovados observados em 20/10/2026, sem aprovação externa ou cobertura integral presumidas.
 
 O versionamento deste registro é independente da versão da especificação.
 
@@ -299,11 +299,17 @@ Não implementar como alternativas vigentes:
 ### Pendências técnicas
 
 - Concluir a inspeção integral dos arquivos originais de política e câmbio: capturas anteriores permitiram identificar campos principais, mas não comprovam schema completo nem validade semântica.
-- Reproduzir o diagnóstico local da CLI e da suíte na T-001, com comandos, resultados, branch e commit-base; observações anteriores indicaram ausência de `src/` e `tests/`, sem comprovar a situação atual do repositório.
-- Definir a forma executável da CLI após aprovação da stack; os quatro argumentos obrigatórios já estão decididos em CONS-008.
-- Implementar e executar testes; preencher a matriz AC/RN/T somente com evidências reais.
+- Reproduzir o diagnóstico local da CLI e da suíte na T-001, com comandos, resultados, branch e commit-base; a ausência de `src/` e `tests/` descrevia apenas o baseline histórico; ambos existem no projeto implementado.
+- Forma executável já confirmada: `python -m src calcular`, com os quatro argumentos obrigatórios de CONS-008.
+- Completar a matriz AC/RN/T com testes específicos e evidências reais; a suíte geral já foi executada com 16 testes aprovados.
 - Registrar resultados e atualizar rastreabilidade.
 
-Nenhum teste foi declarado aprovado por esta revisão documental.
+Esta atualização registra 16 testes aprovados conforme captura de terminal, sem afirmar aprovação de cada AC.
 
 Nenhuma pendência técnica autoriza reabrir silenciosamente decisões já tomadas.
+
+### REV-EXEC-2026-10-20 — Estado comprovado, sem nova decisão de negócio
+
+A execução observada incluiu a CLI Python (`python -m src calcular`) com os quatro caminhos explícitos, a geração do resultado do Envelope 2 e a suíte `python -m unittest discover -s tests -v`, com `Ran 16 tests` e `OK`, sem testes ignorados na última rodada. O commit `aa39da2` documenta instruções técnicas em `CLAUDE.md`; o commit `b3aaeff` adicionou exemplos oficiais do Envelope 2.
+
+Esta nota atualiza somente o **estado de execução**. Todas as decisões AMB, E2 e CONS permanecem vigentes. Os testes não demonstram, por si, cobertura integral de AC-001 a AC-036.

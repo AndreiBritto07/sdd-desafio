@@ -2,7 +2,7 @@
 
 **Revisão documental:** 20/10/2026 — contrato consolidado pós-Envelope 2  
 **Base normativa:** `spec.md` v0.2, `DECISIONS.md` e `tasks.md` T-001 a T-047.  
-**Estado:** planejamento; implementação, aprovação externa e testes executados não presumidos.
+**Estado:** plano técnico original com atualização de execução em 20/10/2026. Implementação e testes observados; aprovação externa e cobertura integral não presumidas.
 
 ## 1. Objetivo e limites
 
@@ -14,7 +14,7 @@ Implementar uma CLI determinística que processe um colaborador por lote, valide
 calcular --input entrada.json --output resultado.json --politica politica-v4.json --cambio cambio.json
 ```
 
-Os quatro argumentos são obrigatórios. Não há descoberta automática de política/câmbio, defaults de caminhos ou valores embutidos. O comando de execução real (script, módulo ou binário) será documentado depois de confirmar a stack. Saída 0 para lote processado; 2 para falhas globais de contrato/entrada/política/câmbio; 3 para I/O da entrada principal ou escrita. Nunca publicar JSON financeiro parcial em falha global. Logs não integram o JSON.
+Os quatro argumentos são obrigatórios. Não há descoberta automática de política/câmbio, defaults de caminhos ou valores embutidos. O comando executável confirmado é `python -m src calcular` (Python 3.11, biblioteca padrão). Saída 0 para lote processado; 2 para falhas globais de contrato/entrada/política/câmbio; 3 para I/O da entrada principal ou escrita. Nunca publicar JSON financeiro parcial em falha global. Logs não integram o JSON.
 
 ## 3. Descoberta obrigatória antes de codificar (T-001)
 
@@ -24,13 +24,13 @@ Os quatro argumentos são obrigatórios. Não há descoberta automática de pol�
 4. Executar testes preexistentes, se houver, e registrar comando, data e resultado. Se não houver suíte, registrar sua ausência.
 5. Escolher stack compatível com parser que preserve lexemas numéricos e suporte decimal exato; registrar escolha técnica sem mudar regras de negócio.
 
-**Observações preliminares já compartilhadas (não revalidadas nesta Fase 2):** capturas de terminal indicaram Python 3.11.0, Node.js 22.13.1, `CLAUDE.md` vazio, ausência de `src/` e `tests/`, e quatro fixtures do Envelope 2 com JSON sintaticamente válido. O comando `python -m unittest discover -s tests -v` apresentou erro de descoberta por ausência da pasta, **não** falha de teste funcional. Não há, neste registro, commit-base e saídas completas reproduzidas; verificar novamente antes de concluir T-001.
+**Histórico do baseline, anterior à implementação (não descreve o estado atual):** capturas de terminal indicaram Python 3.11.0, Node.js 22.13.1, `CLAUDE.md` vazio, ausência de `src/` e `tests/`, e quatro fixtures do Envelope 2 com JSON sintaticamente válido. O comando `python -m unittest discover -s tests -v` apresentou erro de descoberta por ausência da pasta, **não** falha de teste funcional. Não há, neste registro, commit-base e saídas completas reproduzidas; verificar novamente antes de concluir T-001.
 
 **Campos preliminarmente observados na política:** `versao` (texto), `vigencia` (data textual), `moeda_base` (texto), `padrao` (objeto por categoria), `centros_custo` (objeto por centro e categoria), `nota_fiscal_obrigatoria_acima_de` (número) e `acrescimo_em_viagem_percentual` (número). Nas regras por categoria foram observados `limite` (número), `periodicidade` (texto, exemplos `dia` e `diaria`) e `observacao` (texto em exemplo específico). Essas observações não comprovam obrigatoriedade ou permissão de campos adicionais.
 
 **Campos preliminarmente observados no câmbio:** `moeda_base` (texto), `fonte` (texto), `observacao` (texto) e `taxas` (objeto por data `YYYY-MM-DD`, com objetos por moeda como `USD` e `EUR` e valores numéricos). O schema integral, incluindo obrigatoriedade e proibição de campos, permanece a conferir nos arquivos originais.
 
-**Saída da T-001:** inventário de arquivos, schemas efetivamente verificados, stack aprovada, comando de execução proposto ou existente e estado-base reproduzível, registrados em `docs/evidencias/T-001-baseline.md`. A escolha de Python 3.11 + `decimal.Decimal` + `unittest` é **recomendação**, não decisão técnica aprovada nem implementação existente.
+**Saída da T-001:** inventário de arquivos, schemas efetivamente verificados, stack aprovada, comando de execução proposto ou existente e estado-base reproduzível, registrados em `docs/evidencias/T-001-baseline.md`. A stack efetivamente utilizada é Python 3.11 com `decimal.Decimal`, `json`, `argparse` e `unittest`, sem dependências externas.
 
 ## 4. Arquitetura lógica proposta
 
@@ -43,7 +43,7 @@ Os quatro argumentos são obrigatórios. Não há descoberta automática de pol�
 - **Cálculo financeiro:** cotação da data/anterior, decimal exato, half-up por item, centavos inteiros, limites e NF.
 - **Saída / reconciliação:** status, motivos ordenados, avisos, quatro totais, invariantes e serialização monetária com duas casas.
 
-Os nomes acima são responsabilidades lógicas, não diretórios ou módulos já existentes. Definir arquivos concretos após T-001.
+Essas responsabilidades foram propostas no planejamento. Há implementação em `src/` e testes em `tests/`; a correspondência exata entre cada responsabilidade e arquivo deve ser verificada no código.
 
 ## 5. Ordem de implementação por dependências
 
@@ -73,7 +73,7 @@ Não criar novos aliases de motivos. Precedência e base dos totais seguem RN-01
 
 Criar testes unitários para parsers, normalização, valores, limites e deduplicação; integração para CLI/arquivos externos; regressão para fixture original e Envelope 2; propriedades/invariantes para contagens e totais. Cobrir limites inclusivos/exclusivos, moedas sem cotação, câmbio futuro, cotação duplicada, falhas globais e continuidade de itens.
 
-A matriz executável deve registrar para cada **AC-001 a AC-036**: `AC | RN | T | arquivo::teste | comando | resultado | evidência/commit`. Preencher caminhos e resultados apenas após criar e executar testes. Até lá: **NÃO EXECUTADO**. T-030 e T-045 fecham mapeamento; T-047 executa e documenta a suíte completa.
+A matriz executável deve registrar para cada **AC-001 a AC-036**: `AC | RN | T | arquivo::teste | comando | resultado | evidência/commit`. Preencher caminhos e resultados apenas após criar e executar testes. Até haver evidência individual por AC, registrar **COBERTURA NÃO COMPROVADA**; a execução geral da suíte foi observada. T-030 e T-045 fecham mapeamento; T-047 executa e documenta a suíte completa.
 
 ## 8. Evidências e commits
 
@@ -94,9 +94,20 @@ Para cada tarefa: alteração focada, testes relacionados, comando e saída regi
 
 - [x] Contrato dos quatro argumentos definido documentalmente.
 - [x] Escopo dos erros esclarecido documentalmente.
-- [ ] T-001 concluída com inventário, schemas, stack e baseline registrados com evidências reproduzíveis.
-- [ ] Stack proposta na T-001 aprovada e forma executável da CLI definida antes da implementação.
+- [ ] Confirmar formalmente todos os critérios de aceite da T-001 com base no inventário e nas evidências já registradas.
+- [x] Stack e forma executável da CLI definidas e utilizadas na implementação.
 
 **Marcos posteriores, não pré-requisitos para encerrar a T-001:** criação de fixtures mínimas na T-002 e execução dos primeiros testes implementados. A T-001 exige apenas executar a suíte **preexistente, se houver**, ou registrar comprovadamente sua ausência; não exige testes que serão criados em tarefas futuras.
 
 Este plano não equivale à conclusão das tarefas nem à aprovação da especificação.
+
+
+## 11. Atualização de execução — 20/10/2026
+
+- **Implementação observada:** `src/` contém a CLI e o motor; há suíte em `tests/`.
+- **Comando executado:** `python -m src calcular --input exemplos/envelope/despesas-envelope.json --output resultado-envelope.json --politica exemplos/envelope/politica-v4.json --cambio exemplos/envelope/cambio.json`.
+- **Regressão observada:** `python -m unittest discover -s tests -v` → `Ran 16 tests`, `OK` (zero skips na última execução).
+- **Git:** commit `aa39da2` (`CLAUDE.md`) e `origin/main` sincronizados na captura anterior à geração local do JSON.
+- **Limite da evidência:** não existe demonstração de que cada um dos 36 ACs tenha um teste correspondente aprovado. A matriz de rastreabilidade e o fechamento da T-047 permanecem pendentes.
+
+As seções de fases e riscos acima são histórico do plano de execução, não afirmação de que a implementação ainda não começou. O arquivo de saída `resultado-envelope.json` é artefato gerado localmente, não fixture oficial.

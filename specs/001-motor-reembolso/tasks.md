@@ -2,7 +2,7 @@
 
 ****Base:**** spec.md v0.2 e DECISIONS.md, revisão de 20/10/2026.  
 
-****Estado:**** tarefas não concluídas; execução deve ser comprovada.
+**Estado:** backlog normativo com execução parcial comprovada; fechamento integral de T-001 a T-047 e AC-001 a AC-036 ainda não demonstrado.
 
 Cada tarefa deve resultar em um commit focado.
 
@@ -30,13 +30,13 @@ Antes de fixtures e leitores externos, concluir a inspeção de schemas da T-001
 
 Para tarefas financeiras, implementar primeiro os fundamentos necessários: política, parser decimal, validação monetária e conversão.
 
-## Evidências de execução disponíveis em 20/10/2026
+## Evidências de execução disponíveis em 20/10/2026 (registro histórico e atualização)
 
 | Tarefa | Estado demonstrado | Evidência | Limite da conclusão |
 | --- | --- | --- | --- |
 | T-001 | Inspeção documentada; aceite formal pendente de conferência | `docs/evidencias/T-001-baseline.md`; commits `6aad0c8`, `ac12323` | Sem prova de validação semântica integral RN-019/RN-020 ou testes funcionais |
 | T-002 | Fixtures implementadas; 3 testes aprovados | `python -m unittest discover -s tests -v` → `Ran 3 tests`, `OK`; commit `69fc292` | Não comprova cálculo financeiro, CLI ou AC-001 a AC-036 |
-| T-003 | Não iniciada | Nenhum teste de aceite apresentado | Aguardando implementação e execução dos dois testes previstos |
+| T-003 | Implementação de validação global e teste relacionado observados | `tests/test_validacao_global.py`; `test_envelope_invalido_rejeita_lote` e `test_periodo_global_invalido_rejeita_lote` aprovados na execução geral | Conferir todos os casos de aceite da tarefa antes de marcá-la como concluída |
 
 **Stack aprovada:** Python 3.11 com `decimal.Decimal`, `json`, `unittest` e `argparse`, sem dependências externas.
 
@@ -434,7 +434,7 @@ Para tarefas financeiras, implementar primeiro os fundamentos necessários: pol�
 
 ## Matriz de execução dos critérios de aceite
 
-Os 36 critérios AC-001 a AC-036 devem ser rastreados na implementação por: `AC | RN | T | arquivo::teste | comando | resultado | evidência/commit`. Os nomes de testes previstos nas tarefas são hipóteses de planejamento, não testes já existentes. Até execução registrada, cada resultado é ****NÃO EXECUTADO****. T-030 e T-045 devem completar os vínculos com caminhos reais; T-047 só poderá ser concluída após execução e evidências.
+Os 36 critérios AC-001 a AC-036 ainda devem ser rastreados individualmente na implementação por: `AC | RN | T | arquivo::teste | comando | resultado | evidência/commit`. Os nomes de testes previstos nas tarefas são hipóteses de planejamento, não testes já existentes. A suíte geral foi executada com 16 testes aprovados; para cada AC sem evidência específica, registrar **COBERTURA NÃO COMPROVADA**, não `APROVADO`. T-030 e T-045 devem completar os vínculos com caminhos reais; T-047 só poderá ser concluída após execução e evidências.
 
 ## Definição de pronto
 
@@ -458,13 +458,13 @@ Uma implementação entregue exige T-047 concluída. Esta revisão documental n�
 
 - Validar integralmente os schemas externos durante as tarefas de leitores (T-033 e T-035); os testes de fixtures já executados não comprovam essa validação.
 
-- Iniciar T-003: validação global de envelope e período, com testes `test_envelope_invalido_rejeita_lote` e `test_periodo_global_invalido_rejeita_lote`.
-- Versionar os quatro arquivos JSON de `exemplos/envelope/` necessários às fixtures, se ainda não versionados.
-- Implementar o contrato consolidado.
+- Conferir a cobertura completa de T-003; os testes de envelope e período já foram executados e aprovados.
+- Os quatro JSONs de `exemplos/envelope/` foram versionados no commit `b3aaeff`; manter os arquivos no repositório.
+- Auditar a implementação existente contra os critérios de aceite ainda sem teste específico.
 
 - Recalcular a fixture original.
 
-- Executar testes e registrar evidências.
+- Completar a matriz AC/RN/T/teste/resultado/evidência e registrar as lacunas não cobertas.
 
 Não há pendência de decisão sobre:
 
@@ -477,3 +477,13 @@ Não há pendência de decisão sobre:
 - Formatação de valores aceitos com duas casas.
 
 - Exigência fiscal sobre o valor preliminar reembolsável.
+
+## Atualização da suíte e dos commits — 20/10/2026
+
+A última captura de terminal comprova a execução de `python -m unittest discover -s tests -v` com **16 testes executados, 16 aprovados, 0 falhas e 0 ignorados**, após geração de `resultado-envelope.json` pela CLI. Entre os testes exibidos estavam validação global, chaves repetidas, período invertido, cotação anterior, limite parcial, duplicidade, hospedagem e serialização monetária.
+
+Os commits observados incluem `6ee59ee` (validação global), `2789c78` (motor e CLI), `b3aaeff` (exemplos oficiais do Envelope 2), `01cbc34` (diretório de sessões) e `aa39da2` (`CLAUDE.md`).
+
+**Importante:** não alterar retroativamente os critérios de aceite propostos nas T-001 a T-047. Um teste aprovado não comprova automaticamente todos os critérios associados a uma tarefa. A T-047 permanece **pendente** até o mapeamento verificável de AC-001 a AC-036.
+
+A tabela histórica acima contém o marco inicial de 3 testes da T-002; o estado mais recente e prevalente é o desta atualização.

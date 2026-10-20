@@ -2,11 +2,11 @@
 
 **Versão:** 0.2  
 **Revisão documental:** 20/10/2026 — consolidação pós-Envelope 2  
-**Estado:** proposta consolidada; implementação e testes pendentes.
+**Estado:** contrato normativo consolidado; implementação Python e CLI existentes, com 16 testes aprovados na última execução observada (20/10/2026). Cobertura integral de AC-001 a AC-036 ainda não demonstrada.
 
 Esta versão incorpora as decisões da revisão e do Envelope 2 em um único contrato. As regras antigas substituídas estão identificadas em DECISIONS.md e não constituem comportamento alternativo.
 
-A consolidação documental não representa aprovação oficial do avaliador nem comprova implementação. A versão anterior deve permanecer no histórico do Git.
+A consolidação documental não representa aprovação oficial do avaliador nem, isoladamente, comprova implementação. A versão anterior deve permanecer no histórico do Git.
 
 ## 1. Problema e objetivo
 
@@ -796,3 +796,9 @@ tasks.md mantém tarefas pequenas, critérios verificáveis e nenhuma conclusão
 - Registrar evidências antes de marcar ACs ou tarefas como concluídos.
 
 Não há pendência de decisão sobre período global inválido ou sobre o teto de representação comercial: ambos estão definidos nesta versão.
+
+## Registro de execução — 20/10/2026 (não normativo)
+
+A execução local demonstrada utilizou `python -m src calcular` com `--input`, `--output`, `--politica` e `--cambio`, usando os arquivos oficiais em `exemplos/envelope/`. Após gerar `resultado-envelope.json`, o comando `python -m unittest discover -s tests -v` apresentou `Ran 16 tests` e `OK`, sem skips ou falhas na última captura.
+
+Este registro não modifica RN-001 a RN-026 nem AC-001 a AC-036. A correspondência integral entre os 36 critérios, os testes executados e suas evidências ainda requer matriz de rastreabilidade. A existência de implementação não equivale à comprovação de todas as regras em todos os casos de borda.
