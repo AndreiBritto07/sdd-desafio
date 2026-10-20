@@ -3,7 +3,7 @@
 **Projeto:** Motor de Cálculo de Reembolso --- desafio SDD / Envelope 2\
 **Tarefa:** T-001 --- Inspecionar projeto, schemas e suíte-base\
 **Data das evidências de terminal:** 20/10/2026\
-**Situação:** EM ANDAMENTO --- não concluída\
+**Situação:** INSPEÇÃO CONCLUÍDA COM LIMITAÇÕES DOCUMENTADAS; encerramento formal depende da atualização do backlog e da conferência local\
 **Natureza do registro:** observações provenientes das capturas de
 terminal fornecidas pelo responsável; este relatório não declara
 execução independente no repositório local.
@@ -285,7 +285,7 @@ critérios de aceite ou decisões de negócio.
   observáveis                         exibidos
 
   Verificação estrita de              Comprovada nos cinco arquivos
-  sintaxe/duplicidade JSON            
+  sintaxe/duplicidade JSON
 
   Stack definida e aprovada           Concluído por decisão explícita
 
@@ -293,7 +293,7 @@ critérios de aceite ou decisões de negócio.
                                       nenhum teste funcional executado
 
   Validação semântica integral dos    **Não comprovada**
-  schemas externos                    
+  schemas externos
 
   Comando real de execução da CLI     **Não existente ainda**
 
@@ -301,23 +301,56 @@ critérios de aceite ou decisões de negócio.
   e commit de evidência               responsável**
   -----------------------------------------------------------------------
 
-**Decisão de status:** T-001 permanece **EM ANDAMENTO**, não concluída.
-O registro deste relatório não comprova por si só a validação integral
-de RN-019/RN-020. A ausência de CLI implementada deve ser registrada
-como baseline, não tratada como teste funcional reprovado.
+**Avaliação de status:** os critérios de **inspeção** da T-001 estão atendidos pelas evidências observadas, com limitações documentadas. O encerramento formal depende de atualizar o backlog e versionar esta revisão. Não foi demonstrada validação semântica integral de RN-019/RN-020, que deverá ser testada nas tarefas de implementação dos leitores. A ausência de CLI e suíte no baseline não é falha funcional.
 
 ### Próximas ações
 
-1.  Revisar e adicionar este relatório em
-    `docs/evidencias/T-001-baseline.md`.
-2.  Realizar inspeção/validação semântica dos schemas de política e
-    câmbio contra RN-019/RN-020, separando campos efetivamente presentes
-    de restrições normativas.
-3.  Confirmar que o relatório reflete o estado do repositório no momento
-    do commit de evidências; não adicionar `desktop.ini` ou
-    `estrutura-local.txt` por acidente.
-4.  Registrar a evidência no Git em commit focado de T-001.
-5.  Reavaliar formalmente o aceite da T-001; só então iniciar T-002 e
-    implementação.
+1. Substituir a versão local deste relatório e executar `git diff --check`.
+2. Conferir o texto vigente da T-001 em `tasks.md` e, se mantido o aceite de inspeção, registrar seu encerramento formal com referência a este relatório.
+3. Versionar a revisão em commit focado; não adicionar `desktop.ini` ou `estrutura-local.txt`.
+4. Prosseguir com T-002 apenas após a conferência do commit. A validação integral de RN-019/RN-020 e os testes funcionais pertencem às tarefas de implementação e teste, não são resultados da T-001.
 
-**Não foi realizado commit ou push por este relatório.**
+**Histórico de Git:** a versão inicial do relatório foi commitada e enviada em `6aad0c8` (`docs(T-001): registra baseline tecnico e evidencias`). Esta revisão ainda não foi commitada nem enviada pelo assistente.
+
+## 9. Evidências adicionais — verificações selecionadas dos schemas
+
+Após o commit inicial do baseline, foram executados dois scripts diagnósticos temporários no Git Bash, com `json.loads`, `Decimal`, detecção de chaves repetidas e validações selecionadas de campos. As capturas apresentaram os seguintes resultados:
+
+### Política — `exemplos/envelope/politica-v4.json`
+
+```text
+=== VALIDACAO DA POLITICA ===
+OK: verificacoes selecionadas da politica
+AVISO: conformidade integral com RN-019 ainda nao comprovada
+```
+
+O script verificou, entre outros aspectos, raiz como objeto, `versao` igual a `v4`, data de vigência interpretável, moeda-base `BRL`, objetos `padrao` e `centros_custo`, regras com limites numéricos não negativos e finitos, periodicidades entre `dia`, `diaria` e `mes`, tipo de `observacao` quando presente, limite de representação comercial não superior a 300, e campos numéricos de nota fiscal e acréscimo não negativos.
+
+**Escopo:** são verificações selecionadas sobre o arquivo observado, não um validador normativo completo. A lista de periodicidades aceita pelo script é uma hipótese diagnóstica, não uma nova decisão de negócio. Não se demonstrou rejeição de todos os formatos e campos inválidos possíveis.
+
+### Câmbio — `exemplos/envelope/cambio.json`
+
+```text
+=== VALIDACAO DO CAMBIO ===
+OK: verificacoes selecionadas do cambio
+AVISO: conformidade integral com RN-020 ainda nao comprovada
+```
+
+O script verificou raiz como objeto, moeda-base `BRL`, tipos textuais de `fonte` e `observacao`, `taxas` como objeto não vazio, datas ISO interpretáveis e canônicas, objetos de moedas não vazios, códigos de moeda não vazios e cotações `Decimal` positivas e finitas, além de rejeição de chaves repetidas no parser.
+
+**Escopo:** não foram testadas todas as variantes de erros exigidas pela RN-020, nem a lógica de seleção da cotação mais recente anterior. Não existe implementação do leitor nem suíte de testes funcionais.
+
+### Resultado conjunto e conclusão do aceite da T-001
+
+| Evidência exigida na T-001 | Situação observada |
+|---|---|
+| Caminhos reais e inventário | Registrados |
+| Comandos e resultados-base | Registrados |
+| Estruturas físicas dos arquivos externos | Inspecionadas e documentadas |
+| Verificação além de `json.tool` | Cinco leituras estritas e duas verificações selecionadas concluídas |
+| Stack | Aprovada: Python 3.11, `Decimal`, `json`, `unittest`, `argparse` |
+| Suíte-base | Ausente; não há falhas funcionais preexistentes a reproduzir |
+| Evidência persistida | Versão inicial commitada em `6aad0c8`; revisão atual depende de commit |
+| Validação semântica integral e testes de produção | Não demonstrados; permanecem para as tarefas correspondentes |
+
+**Parecer:** a finalidade de inspeção e diagnóstico da T-001 foi cumprida com limitações explicitadas. A ausência de uma CLI e de uma suíte-base foi observada, não encoberta. É defensável encerrar a T-001 **como tarefa de inspeção**, desde que a revisão seja versionada e o backlog seja atualizado de forma rastreável; não é defensável declarar RN-019/RN-020 integralmente validados ou testes funcionais aprovados.
