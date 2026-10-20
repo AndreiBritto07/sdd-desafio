@@ -1,356 +1,792 @@
 # Spec — Motor de Cálculo de Reembolso
 
-**Versão:** 0.2 · **Status:** proposta, pendente de aprovação oficial · **Data:** 20/10/2026
+**Versão:** 0.2  
+**Revisão documental:** 20/10/2026 — consolidação pós-Envelope 2  
+**Estado:** proposta consolidada; implementação e testes pendentes.
 
-Este documento consolida as correções decididas durante a revisão, mas essas escolhas continuam sendo propostas e não equivalem a aprovação oficial. A versão 0.1 é preservada no histórico do repositório. O requisito do Dia 2 foi recebido por meio do envelope da Política v4 e será integrado após a revisão de impacto. A correção 69 foi decidida parcialmente: data de despesa inválida ou fora da competência afeta somente aquela despesa e não rejeita o lote. O tratamento de competência ausente/inválida e de limites do período inválidos permanece pendente.
+Esta versão incorpora as decisões da revisão e do Envelope 2 em um único contrato. As regras antigas substituídas estão identificadas em DECISIONS.md e não constituem comportamento alternativo.
 
-## 1. Problema
-O financeiro confere despesas manualmente contra uma política ambígua, gerando demora e decisões inconsistentes.
+A consolidação documental não representa aprovação oficial do avaliador nem comprova implementação. A versão anterior deve permanecer no histórico do Git.
 
-## 2. Objetivo
-Calcular o reembolso de um colaborador em um período, explicando cada decisão e permitindo reconciliar todos os totais.
+## 1. Problema e objetivo
 
-## 3. Fora de escopo
-Não efetua pagamentos, não valida autenticidade de notas, não consulta sistemas externos, não autentica usuários, não mantém histórico entre execuções, não converte moedas, não oferece interface gráfica, não processa múltiplos colaboradores no mesmo lote, não reconcilia estornos, não infere viagens ou quantidade de diárias de texto. Sem comprovação estruturada de viagem, nenhum limite recebe os 50% adicionais; isso é uma limitação assumida, não remoção silenciosa da política.
+Calcular o reembolso de um colaborador em um período, aplicando política externa e conversão cambial, explicando cada resultado e permitindo reconciliar os totais.
 
-## 4. Entrada e saída
-### Entrada
-Mantém exatamente o formato do exemplo original.
+## 2. Escopo
 
-| Campo | Tipo | Obrigatório / significado |
+Inclui:
+
+- Validação de JSON, envelope, período e despesas.
+- Identificação de IDs repetidos e duplicatas por conteúdo.
+- Política por centro de custo, com fallback explícito.
+- Conversão cambial com cotação da data ou anterior.
+- Limites diários e mensais, reembolso parcial e exigência fiscal.
+- Saída determinística, motivos, contagens e totais.
+- Execução por CLI.
+
+Não inclui:
+
+- Pagamentos, autenticação ou interface gráfica.
+- Consulta externa de política ou câmbio.
+- Validação da autenticidade de notas fiscais.
+- Inferência de viagem ou número de diárias por texto.
+- Processamento de vários colaboradores no mesmo lote.
+- Compensação de estornos.
+- Histórico financeiro entre execuções.
+
+Os limites mensais consideram as despesas do lote processado. Sem histórico externo, o motor não conhece reembolsos de execuções anteriores.
+
+## 3. Fontes e precedência
+
+1. Aplicar as decisões consolidadas nesta especificação.
+2. Obter categorias, limites e periodicidades da política externa válida.
+3. Aplicar as restrições específicas de CC-COMERCIAL/representacao e CC-ENG-PLATAFORMA/hospedagem.
+4. Usar exclusivamente cambio.json para conversão.
+
+Não manter dois modos implícitos, um anterior e outro posterior ao Envelope 2.
+
+Os schemas físicos de politica-v4.json e cambio.json devem ser conferidos nos arquivos originais antes da implementação dos leitores. Esta especificação não inventa seus nomes internos de campos.
+
+## 4. Entrada
+
+### 4.1 Envelope principal
+
+| Campo | Tipo | Obrigatório |
 |---|---|---|
 | colaborador | objeto | Sim |
-| colaborador.id, nome, centro_custo | texto não vazio | Sim, identificação; preservar |
+| colaborador.id | texto não vazio | Sim |
+| colaborador.nome | texto não vazio | Sim |
+| colaborador.centro_custo | texto não vazio | Sim |
 | periodo | objeto | Sim |
-| periodo.competencia | texto YYYY-MM | Sim, mês válido |
-| periodo.inicio, fim | data YYYY-MM-DD | Sim, datas reais inclusivas no mês de competência |
-| despesas | lista | Sim, pode estar vazia |
-| despesas[].id | texto | Opcional; se ausente, gerar ID determinístico; se presente, deve ser texto não vazio válido |
-| despesas[].data | data YYYY-MM-DD | Sim |
-| despesas[].categoria | texto | Sim; normalização definida em RN-011 |
-| despesas[].descricao, fornecedor | texto não vazio | Sim; sem normalização |
-| despesas[].valor | número decimal finito | Sim; booleano não é número, não aceitar texto numérico |
-| despesas[].tem_nota_fiscal | booleano | Sim; somente true ou false |
+| periodo.competencia | texto YYYY-MM | Sim |
+| periodo.inicio | data YYYY-MM-DD | Sim |
+| periodo.fim | data YYYY-MM-DD | Sim |
+| despesas | lista | Sim; pode estar vazia |
 
-Strings obrigatórias contendo somente espaços são inválidas. Chaves são exatas; campos extras são ignorados. Campos extras na raiz, envelope e despesas não alteram cálculos. JSON inválido, chaves JSON repetidas, envelope inválido ou colaborador incompleto/inválido rejeitam o lote inteiro. Campo `id` de despesa ausente gera ID; presente mas vazio, composto só por espaços ou com tipo incorreto torna a despesa estruturalmente inválida. ID repetido rejeita somente a ocorrência posterior no nível do item; o lote continua. Datas não têm hora/fuso. Valores estão em reais. Sem limite artificial de quantidade de itens nesta versão.
+### 4.2 Despesa
 
-### Saída de sucesso
-Objeto com `versao_spec: "0.2"`, colaborador e período usados no processamento, avisos (lista de códigos), `items` (lista em ordem original) e `resumo`. Índices são zero-based. ID ausente é gerado como `gerado-{índice}`; em colisão normalizada, tentar `gerado-{índice}-1`, `-2` etc. O índice original inclui todos os itens da entrada. ID fornecido é preservado exatamente na saída; para comparação, remover espaços ASCII das extremidades e ignorar diferença entre maiúsculas/minúsculas. ID inválido presente retorna `id: null`; nunca gerar ID para substituir um valor presente inválido. Valores monetários de saída têm até duas casas, exceto `valor_original`, preservado quando numericamente válido.
-
-| Campo de items[] | Tipo | Significado |
+| Campo | Tipo | Regra |
 |---|---|---|
-| indice | inteiro >= 0 | Posição no arquivo |
-| id | texto ou null | ID original preservado; gerado quando ausente; null quando presente mas inválido |
-| valor_original | número ou null | Valor recebido se numericamente válido |
-| valor_solicitado | número | Valor positivo arredondado para itens estruturalmente válidos; para itens inválidos/zero-negativos, 0; itens duplicados e recusados por regra podem manter o valor arredondado |
-| categoria_normalizada | texto ou null | Valor normalizado se disponível |
-| valor_reembolsavel | número | Pagamento calculado |
-| status | texto enum | APROVADO, PARCIAL, RECUSADO, IGNORADO |
-| motivo | texto enum | Código principal abaixo |
-| justificativa | texto não vazio | Explicação humana coerente, redação livre |
-| duplicata_de_indice | inteiro ou null | Primeiro item equivalente |
-| avisos | lista de textos | DIARIAS_NAO_INFORMADAS quando hospedagem estruturalmente válida |
+| id | texto não vazio | Opcional; gerar somente quando ausente |
+| data | data YYYY-MM-DD | Obrigatório |
+| categoria | texto não vazio | Obrigatório |
+| descricao | texto não vazio | Obrigatório |
+| fornecedor | texto não vazio | Obrigatório |
+| valor | número JSON decimal convencional | Obrigatório; RN-009/RN-023 |
+| tem_nota_fiscal | booleano | Obrigatório |
+| moeda | texto com três letras ASCII maiúsculas | Opcional; ausente significa BRL |
 
-Motivos permitidos: `DADO_INVALIDO`, `DUPLICATA`, `ESTORNO_NAO_PROCESSADO`, `VALOR_ZERO`, `FORA_DA_COMPETENCIA`, `CATEGORIA_NAO_PREVISTA`, `NOTA_FISCAL_OBRIGATORIA`, `LIMITE_ESGOTADO`, `LIMITE_APLICADO`, `DENTRO_DO_LIMITE`. `erros` é sempre uma lista de `{campo, codigo}`; campos estruturais inválidos registram todos os erros em ordem fixa, usando `CAMPO_OBRIGATORIO`, `TIPO_OU_FORMATO_INVALIDO` ou `ID_REPETIDO`. Repetição de ID gera `status: RECUSADO`, `motivo: DADO_INVALIDO` e erro `ID_REPETIDO`. Duplicata por conteúdo com ID diferente gera `IGNORADO`/`DUPLICATA` e define `duplicata_de_indice`. Itens estruturalmente inválidos permanecem em `items`, mas não entram em `total_itens`, contagens por status nem totais financeiros.
+Strings obrigatórias compostas somente por espaços são inválidas.
 
-`resumo` contém `total_itens`, quantidades por status (`aprovados`, `parciais`, `recusados`, `ignorados`), `total_solicitado`, `total_reembolsavel` e `total_nao_reembolsavel`. `total_itens` e contagens incluem somente despesas estruturalmente válidas, inclusive duplicatas por conteúdo, IDs repetidos e itens ignorados por valor zero/negativo; despesas estruturalmente inválidas ficam fora. `total_solicitado` soma valores arredondados de despesas estruturalmente válidas que chegam ao cálculo de elegibilidade antes dos limites; itens recusados por regra de negócio, duplicados, ignorados e estruturalmente inválidos são excluídos. `total_reembolsavel` soma pagamentos efetivos. `total_nao_reembolsavel = total_solicitado - total_reembolsavel`. Lista vazia resulta em totais e contagens zero. Aviso global `VIAGEM_NAO_INFORMADA` consta em todo sucesso, inclusive lista vazia. Hospedagem acrescenta aviso por item, mesmo se recusada.
+Chaves são exatas e sensíveis a maiúsculas. Campos desconhecidos no envelope, colaborador, período e despesas são ignorados, sem influenciar cálculo ou duplicidade.
 
-Falha de lote: objeto `{versao_spec: "0.2", erro: {codigo, mensagem}}`, sem `items`/`resumo`. Códigos: `JSON_INVALIDO`, `ENTRADA_INVALIDA`, `ERRO_IO`. Chaves repetidas no mesmo objeto JSON causam `JSON_INVALIDO`; colaborador obrigatório incompleto/inválido ou envelope inválido causa `ENTRADA_INVALIDA`. IDs repetidos de despesa não causam falha de lote. Nenhuma saída financeira parcial em falha. Erro de leitura/escrita deve ser informado no canal de erro quando não for possível gravar resultado.
+Datas não contêm hora ou fuso. Não aceitar formatos alternativos.
 
-Exemplo para uma alimentação válida de 61,00 com nota:
+Booleanos não são números. Strings numéricas não substituem números JSON.
+
+## 5. Saída
+
+### 5.1 Sucesso
+
+Objeto contendo:
+
+- versao_spec: "0.2".
+- colaborador: identificação recebida.
+- periodo: período efetivamente usado, já corrigido se estava invertido.
+- avisos: lista de códigos globais.
+- items: um resultado por despesa, na ordem original.
+- resumo: contagens e totais.
+
+Índices são zero-based.
+
+### 5.2 Resultado por despesa
+
+| Campo | Tipo | Significado |
+|---|---|---|
+| indice | inteiro | Posição original |
+| id | texto ou null | Original válido, gerado quando ausente ou null quando presente inválido |
+| categoria_normalizada | texto ou null | Categoria após normalização, quando disponível |
+| moeda | texto ou null | Moeda válida; BRL quando ausente |
+| valor_original | número ou null | Valor original aceito pela validação monetária |
+| valor_convertido | número ou null | Valor em BRL, antes das restrições; null quando não puder ser obtido |
+| valor_solicitado | número | Valor convertido preservado para apresentação, ou zero quando indisponível |
+| valor_reembolsavel | número | Valor efetivamente reembolsável em BRL |
+| status | enum | APROVADO, PARCIAL, RECUSADO ou IGNORADO |
+| motivos | lista de códigos | Fonte normativa dos motivos |
+| motivo | código | Campo singular de compatibilidade |
+| justificativa | texto não vazio | Explicação humana coerente |
+| duplicata_de_indice | inteiro ou null | Índice canônico para duplicata por conteúdo |
+| avisos | lista de códigos | Avisos do item |
+| erros | lista de objetos | Objetos com campo e codigo |
+
+valor_original é null quando a representação monetária recebida é inválida. Não arredondar uma entrada inválida para apresentá-la como aceita.
+
+valor_convertido pode estar disponível mesmo quando outro campo invalida a despesa, desde que os dados necessários à conversão sejam válidos. Sua presença não torna a despesa elegível.
+
+valor_solicitado por item é informativo. Sua soma indiscriminada não define total_solicitado; a base do total está em RN-016.
+
+motivo corresponde ao primeiro código de motivos. Quando motivos estiver vazio em uma aprovação integral, usar DENTRO_DO_LIMITE.
+
+### 5.3 Status
+
+- APROVADO: item elegível cujo reembolso coincide com o valor convertido.
+- PARCIAL: item elegível com reembolso positivo inferior ao valor convertido.
+- RECUSADO: item inválido ou sem reembolso por regra de negócio.
+- IGNORADO: duplicata por conteúdo.
+
+Uma conversão válida que resulte em 0.00 é aceita. Se não houver outro impedimento, seu status é APROVADO, sem consumo de limite.
+
+Valores originais zero ou negativos são inválidos por item, conforme Envelope 2. Não recebem o tratamento antigo de estorno ignorado.
+
+### 5.4 Códigos de motivos
+
+| Código | Aplicação |
+|---|---|
+| DADO_INVALIDO | Falha estrutural não monetária ou ID repetido |
+| ENTRADA_INVALIDA | Valor/moeda inválidos ou conversão impossível por capacidade numérica |
+| DUPLICATA | Duplicidade por conteúdo |
+| CATEGORIA_NAO_PERMITIDA | Categoria ausente na política aplicável ou proibida |
+| FORA_DA_COMPETENCIA | Data válida fora do período/competência |
+| MOEDA_SEM_COTACAO | Sem cotação aplicável |
+| NOTA_FISCAL_OBRIGATORIA_AUSENTE | Valor preliminar maior que 100.00 sem nota |
+| LIMITE_DIARIO | Restrição pelo saldo diário |
+| LIMITE_MENSAL | Restrição pelo saldo mensal |
+| DENTRO_DO_LIMITE | Compatibilidade singular para aprovação sem restrições |
+
+LIMITE_APLICADO, LIMITE_ESGOTADO, CATEGORIA_NAO_PREVISTA e NOTA_FISCAL_OBRIGATORIA não são códigos normativos desta revisão. Os resultados antigos devem ser migrados para o catálogo acima.
+
+Erros estruturais usam:
+
+- CAMPO_OBRIGATORIO.
+- TIPO_OU_FORMATO_INVALIDO.
+- ID_REPETIDO.
+
+### 5.5 Resumo
+
+| Campo | Definição |
+|---|---|
+| total_itens | Quantidade de despesas estruturalmente válidas |
+| aprovados | Quantidade de APROVADO entre itens estruturalmente válidos |
+| parciais | Quantidade de PARCIAL entre itens estruturalmente válidos |
+| recusados | Quantidade de RECUSADO entre itens estruturalmente válidos |
+| ignorados | Quantidade de IGNORADO entre itens estruturalmente válidos |
+| total_original_convertido | Soma dos valores válidos convertíveis antes das restrições |
+| total_solicitado | Base elegível definida em RN-016 |
+| total_reembolsavel | Soma dos pagamentos calculados |
+| total_nao_reembolsavel | total_solicitado - total_reembolsavel |
+| totais_completos | Indica se foi possível obter o valor em BRL de todas as despesas |
+
+Não usar os aliases total_bruto_convertido e total_nao_reembolsado.
+
+Itens estruturalmente inválidos permanecem em items, mas não entram em total_itens nem nas contagens por status.
+
+### 5.6 Falha de lote
+
+Formato:
+
 ```json
-{"versao_spec":"0.2","colaborador":{"id":"c-1","nome":"Exemplo","centro_custo":"CC"},"periodo":{"competencia":"2026-07","inicio":"2026-07-01","fim":"2026-07-31"},"avisos":["VIAGEM_NAO_INFORMADA"],"items":[{"indice":0,"id":"x-1","valor_original":61,"valor_solicitado":61,"categoria_normalizada":"alimentacao","valor_reembolsavel":60,"status":"PARCIAL","motivo":"LIMITE_APLICADO","justificativa":"Aplicado limite diário de R$ 60,00.","duplicata_de_indice":null,"avisos":[],"erros":[]}],"resumo":{"total_itens":1,"aprovados":0,"parciais":1,"recusados":0,"ignorados":0,"total_solicitado":61,"total_reembolsavel":60,"total_nao_reembolsavel":1}}
+{
+  "versao_spec": "0.2",
+  "erro": {
+    "codigo": "ENTRADA_INVALIDA",
+    "mensagem": "Descrição do erro."
+  }
+}
 ```
 
-## 5. Regras de negócio
+Não retornar items nem resumo em falhas de lote.
+
+Códigos:
+
+- JSON_INVALIDO: JSON principal malformado ou com chaves repetidas.
+- ENTRADA_INVALIDA: envelope, colaborador ou período global inválido.
+- POLITICA_INVALIDA: política ausente, ilegível ou inválida.
+- CAMBIO_INVALIDO: câmbio ausente, ilegível ou inválido.
+- ERRO_IO: falha operacional de leitura da entrada principal ou escrita.
+
+## 6. Regras de negócio
 
 ### RN-001 — Agregação diária
-**Regra:** Somar por colaborador, data e categoria; alimentação 60, transporte 80.
-**Origem:** Alimentação tem limite de R$ 60 por dia. Evidência: d-001/d-002.
-**Aceite AC-001:** 72,50 + 38,00 no mesmo dia: 60,00 e 0,00.
 
-### RN-002 — Distribuição do teto
-**Regra:** Consumir saldo pela ordem dos itens no arquivo; itens recusados/ignorados não consomem saldo.
-**Origem:** Despesas acima do limite são reembolsadas parcialmente. Evidência: d-001/d-002.
-**Aceite AC-002:** 38,00 antes de 72,50 resulta em 38,00 e 22,00; mesmo total 60,00.
+Obter limites da política validada.
 
-### RN-003 — Fronteira do limite
-**Regra:** Reembolsar o mínimo entre valor normalizado e saldo disponível; igualdade é aprovação integral; saldo zero recusa.
-**Origem:** Despesas acima do limite são reembolsadas parcialmente. Evidência: d-014.
-**Aceite AC-003:** Alimentação isolada 59,99/60,00/60,01 paga 59,99/60,00/60,00.
+Agregar limites diários por colaborador, centro de custo, categoria e data.
+
+Valores como 60.00, 80.00 e 250.00 são parâmetros de fixtures quando presentes na política utilizada, nunca fallback implícito do motor.
+
+### RN-002 — Distribuição sequencial
+
+Processar despesas na ordem original.
+
+Consumir cada saldo somente pelo valor efetivamente reembolsado.
+
+Itens inválidos, duplicados, inelegíveis ou bloqueados por nota fiscal não consomem saldo.
+
+### RN-003 — Fronteira e reembolso parcial
+
+O valor preliminar é o menor entre:
+
+- Valor convertido da despesa.
+- Saldo diário, quando aplicável.
+- Saldo mensal, quando aplicável.
+
+Igualdade com o valor convertido é aprovação integral. Valor positivo inferior é parcial. Saldo zero pode resultar em recusa por limite.
 
 ### RN-004 — Obrigatoriedade fiscal
-**Regra:** Exigir nota quando valor positivo original, antes de arredondar e limitar, for estritamente maior que 100; verificar por item.
-**Origem:** Nota fiscal é obrigatória acima de R$ 100. Evidência: d-003/d-004/d-013.
-**Aceite AC-004:** 100,00 sem nota pode pagar 80; 100,01 sem nota paga 0, mesmo com teto 80.
 
-### RN-005 — Viagem sem campo
-**Regra:** Não inferir viagem de descrição, hotel, aeroporto ou centro de custo. No formato atual não aplicar acréscimo; registrar aviso VIAGEM_NAO_INFORMADA no resultado.
-**Origem:** Colaborador em viagem tem limites ampliados em 50%. Evidência: d-003/d-010/d-011.
-**Aceite AC-005:** Corrida aeroporto 100,00 continua limitada a 80; hotel 480 continua limitado a 250.
+Exigir nota fiscal somente quando o valor preliminar reembolsável, após conversão e aplicação preliminar de todos os limites, for estritamente maior que 100.00 BRL.
 
-### RN-006 — Competência
-**Regra:** Usar data da despesa, pois lançamento não existe. Aceitar `inicio <= data <= fim`. Datas de início e fim válidas e invertidas são trocadas automaticamente; a saída retorna o período corrigido efetivamente usado. As datas devem pertencer ao mês de competência. A data de cada despesa deve ser uma data real no formato exato `YYYY-MM-DD`; data ausente, malformada ou inexistente torna somente aquela despesa estruturalmente inválida (`RECUSADO`/`DADO_INVALIDO`, com erro `CAMPO_OBRIGATORIO` para ausência ou `TIPO_OU_FORMATO_INVALIDO` para valor malformado/inexistente), sem rejeitar o lote. Uma data válida fora do período/competência torna somente aquela despesa `RECUSADO`/`FORA_DA_COMPETENCIA`, sem entrar nos totais financeiros, e o lote continua. Não corrigir nem reinterpretar datas de despesa. Continua pendente definir o tratamento de competência ausente/inválida e de datas de início/fim do período ausentes, inválidas ou inexistentes.
-**Origem:** Despesas devem ser lançadas dentro do período de competência. Evidência: d-008/d-014.
-**Aceite AC-006:** uma despesa de 2026-04-15 em competência julho é recusada com `FORA_DA_COMPETENCIA`, mas despesas válidas seguintes continuam sendo processadas; 2026-07-01 e 2026-07-31 aceitam no período de julho. Data de despesa malformada (por exemplo, `15/07/2026`) ou inexistente (por exemplo, `2026-02-30`) recusa somente esse item como `DADO_INVALIDO`, sem rejeitar o lote. Se `inicio` e `fim` forem datas válidas mas estiverem invertidas, trocar a ordem e retornar o período corrigido. Competência inválida e datas inválidas do período aguardam decisão específica.
+Sem nota nesse caso:
 
-### RN-007 — Identificação de duplicatas
-**Regra:** Validar estrutura antes de deduplicar. Para ID, remover espaços ASCII das extremidades e comparar sem diferenciar maiúsculas/minúsculas; preservar o texto original na saída. A primeira ocorrência estruturalmente válida de um ID é mantida; ocorrência posterior com o mesmo ID é `RECUSADO`/`DADO_INVALIDO`, com erro `ID_REPETIDO`, sem abortar o lote. IDs de itens estruturalmente inválidos não reservam o ID para deduplicação. Só entre IDs diferentes comparar conteúdo: data normalizada, categoria normalizada, fornecedor e descrição normalizados por Unicode NFC + trim ASCII nas extremidades + comparação sem diferença de caixa, e valor arredondado a duas casas (RN-009). Não considerar `tem_nota_fiscal` nem campos extras. O primeiro item estruturalmente válido com aquele conteúdo é canônico mesmo se recusado por regra de negócio; posterior é `IGNORADO`/`DUPLICATA`, `valor_reembolsavel: 0` e `duplicata_de_indice` aponta ao canônico.
-**Origem:** Duplicatas devem ser tratadas. Evidência: d-006/d-007.
-**Aceite AC-007:** d-006 paga 54,90; d-007 é ignorado com referencia ao índice 5.
+- Reembolso zero.
+- Motivo NOTA_FISCAL_OBRIGATORIA_AUSENTE.
+- Nenhum consumo de saldo diário ou mensal.
 
-### RN-008 — Estorno
-**Regra:** Ignorar valores negativos, reembolso zero, motivo ESTORNO_NAO_PROCESSADO; não compensar outras despesas.
-**Origem:** Entrada de exemplo contém valor negativo; política não esclarece. Evidência: d-009.
-**Aceite AC-008:** -45,00 paga 0 e não aumenta saldo nem diminui total solicitado.
+Não verificar o limiar sobre o valor original bruto.
 
-### RN-009 — Precisão monetária
-**Regra:** Arredondar cada valor positivo para duas casas, metade para cima; totalizar valores já arredondados. Manter valor original no resultado. Zero original ou arredondado é ignorado.
-**Origem:** Entrada inclui 33.333. Evidência: d-011.
-**Aceite AC-009:** 33,333 -> 33,33; 33,335 -> 33,34; 0,004 -> 0,00 ignorado.
+### RN-005 — Viagem
 
-### RN-010 — Quantidade de diárias
-**Regra:** Não extrair números de texto livre. Considerar uma diária por data informada, compartilhada por todas as hospedagens do mesmo colaborador/data; sinalizar DIARIAS_NAO_INFORMADAS.
-**Origem:** Hospedagem tem limite de R$ 250 por diária. Evidência: d-010/d-013.
-**Aceite AC-010:** Hotel 480 com descrição 2 diarias paga 250; Airbnb 690 sem nota paga 0.
+Não inferir viagem de descrição, hotel, aeroporto ou centro de custo.
 
-### RN-011 — Capitalização de valores
-**Regra:** Remover espaços ASCII nas extremidades e converter A-Z em a-z somente no valor categoria. Aceitar alimentacao, transporte_urbano, hospedagem. Não remover acentos nem criar aliases.
-**Origem:** Categorias fora da política não são reembolsáveis. Evidência: d-014/d-005.
-**Aceite AC-011:** ALIMENTACAO e Alimentacao pagam até 60; alimentação e coworking recusam.
+Sem comprovação estruturada no contrato de entrada, não aplicar o acréscimo de 50%.
 
-### RN-012 — Fim de semana
-**Regra:** Aplicar regras em todos os dias civis, inclusive sábados, domingos e feriados.
-**Origem:** Política não restringe dias úteis. Evidência: d-012.
-**Aceite AC-012:** Sábado 18/07/2026, alimentação 47,20, paga 47,20.
+Emitir VIAGEM_NAO_INFORMADA em toda resposta de sucesso, inclusive lista vazia.
 
-### RN-013 — Capitalização de chaves
-**Regra:** Chaves são exatas e sensíveis a maiúsculas: tem_nota_fiscal obrigatório e booleano real. Aliases não substituem campos. Campos adicionais são ignorados e não afetam regras.
-**Origem:** Respeite o formato da entrada. Evidência: Caso adicional solicitado.
-**Aceite AC-013:** temNotaFiscal sem tem_nota_fiscal invalida item; false é válido, string false não.
+### RN-006 — Competência e datas
 
-### RN-014 — Falhas de entrada
-**Regra:** JSON inválido e chaves repetidas em objeto JSON causam falha de lote `JSON_INVALIDO`; envelope inválido ou qualquer campo obrigatório de `colaborador` ausente, vazio ou de tipo incorreto causa `ENTRADA_INVALIDA`. Despesas são validadas individualmente: registrar todos os erros estruturais em ordem determinística e recusar uma única vez com `RECUSADO`/`DADO_INVALIDO`; continuar o lote. ID ausente gera ID determinístico baseado no índice original; ID presente inválido é `null` e não é substituído por ID gerado. ID repetido em despesa estruturalmente válida rejeita apenas a ocorrência posterior, com erro `ID_REPETIDO`. Campos extras são ignorados.
-**Origem:** Entrada de referência define forma, mas não recuperação. Evidência: Caso adicional.
-**Aceite AC-014:** Item com valor string `60` é recusado e o próximo item válido é processado; ID repetido recusa somente a ocorrência posterior com `ID_REPETIDO`; JSON com chaves repetidas rejeita o lote com `JSON_INVALIDO`; colaborador incompleto rejeita o lote com `ENTRADA_INVALIDA`.
+Usar a data da despesa.
+
+O período é inclusivo: inicio <= data <= fim.
+
+competencia deve representar um mês válido em YYYY-MM. inicio e fim devem ser datas reais em YYYY-MM-DD e pertencer ao mês da competência.
+
+Se inicio e fim forem válidos, compatíveis com a competência e estiverem invertidos, trocá-los automaticamente e devolver o período corrigido.
+
+Competência ou datas globais obrigatórias ausentes/inválidas rejeitam o lote com ENTRADA_INVALIDA.
+
+Data de despesa ausente, malformada ou inexistente:
+
+- Invalida somente a despesa.
+- Usa DADO_INVALIDO.
+- Registra CAMPO_OBRIGATORIO ou TIPO_OU_FORMATO_INVALIDO.
+- Não interrompe o lote.
+
+Data válida fora do período/competência:
+
+- Recusa somente a despesa com FORA_DA_COMPETENCIA.
+- Não consome limite.
+- Não entra em total_solicitado.
+- Pode entrar em total_original_convertido se for convertível.
+
+Não corrigir nem reinterpretar datas individuais.
+
+### RN-007 — Identidade e duplicidade
+
+Validar estrutura antes de deduplicar.
+
+Para comparar IDs, remover espaços ASCII das extremidades e ignorar diferença entre maiúsculas/minúsculas. Preservar o ID original válido na saída.
+
+Primeiro ID estruturalmente válido é mantido. Ocorrência posterior:
+
+- RECUSADO.
+- motivos: [DADO_INVALIDO].
+- erros contendo ID_REPETIDO.
+- Sem abortar o lote.
+- Conta em total_itens e recusados.
+- Não entra em total_solicitado.
+
+IDs de despesas estruturalmente inválidas não reservam identidade para deduplicação.
+
+Entre IDs distintos, comparar conteúdo por:
+
+- Data válida.
+- Categoria normalizada.
+- Fornecedor e descrição com NFC, trim ASCII externo e comparação sem diferença de caixa.
+- Moeda efetiva.
+- Valor original válido, em precisão monetária de duas casas.
+
+Preservar espaços internos e diferenças reais de acento.
+
+moeda participa da chave para impedir que 10.00 BRL e 10.00 USD sejam tratados como a mesma despesa.
+
+tem_nota_fiscal e campos desconhecidos não participam.
+
+Primeiro item estruturalmente válido com aquele conteúdo é canônico, mesmo se posteriormente recusado por regra de negócio.
+
+Duplicata por conteúdo:
+
+- IGNORADO.
+- motivos: [DUPLICATA].
+- Reembolso zero.
+- duplicata_de_indice apontando ao canônico.
+- Conta em total_itens e ignorados.
+- Não entra em total_solicitado.
+- Entra em total_original_convertido se convertível.
+
+### RN-008 — Zero, negativos e estornos
+
+Valor original zero ou negativo é inválido por item, com ENTRADA_INVALIDA.
+
+Não compensar outras despesas nem aumentar saldo.
+
+A regra anterior de IGNORADO/ESTORNO_NAO_PROCESSADO está substituída no contrato consolidado.
+
+### RN-009 — Precisão do valor original
+
+Aceitar somente número JSON decimal convencional, positivo, com no máximo duas casas decimais.
+
+Aceitar números inteiros ou com uma casa. Na saída monetária, escrever duas casas.
+
+Exemplos:
+
+- 10 -> 10.00.
+- 10.5 -> 10.50.
+- 10.50 -> 10.50.
+- 10.501 -> despesa inválida.
+- "10.50" -> despesa inválida.
+- 1.05e1 -> despesa inválida.
+
+Não arredondar nem truncar um valor original inválido.
+
+### RN-010 — Diárias
+
+Não extrair número de diárias da descrição.
+
+Na ausência de quantidade estruturada, considerar uma diária por data, compartilhada entre hospedagens do mesmo colaborador/data e sujeita à política aplicável.
+
+Emitir DIARIAS_NAO_INFORMADAS para hospedagem estruturalmente válida, inclusive quando recusada por regra de negócio.
+
+### RN-011 — Categoria
+
+Remover espaços ASCII extremos e converter somente A-Z para a-z.
+
+Não remover acentos nem criar aliases.
+
+As categorias permitidas vêm da política aplicável, incluindo representacao quando configurada.
+
+Não manter uma lista fixa restrita às três categorias do exemplo original.
+
+### RN-012 — Dias civis
+
+Aplicar regras em sábados, domingos e feriados, sem criar restrição de dia útil ausente na política.
+
+### RN-013 — Chaves e campos desconhecidos
+
+Chaves são exatas.
+
+temNotaFiscal e TEM_NOTA_FISCAL não substituem tem_nota_fiscal.
+
+tem_nota_fiscal aceita somente true ou false.
+
+Ignorar campos desconhecidos da entrada principal, sem usá-los no cálculo ou na deduplicação.
+
+A tolerância a campos extras da entrada principal não altera a validação estrita dos arquivos externos.
+
+### RN-014 — Validação e IDs gerados
+
+JSON principal inválido ou com chaves repetidas rejeita o lote com JSON_INVALIDO.
+
+Envelope inválido ou colaborador obrigatório incompleto/inválido rejeita o lote com ENTRADA_INVALIDA.
+
+Validar cada despesa individualmente e registrar todos os erros estruturais na ordem:
+
+1. id.
+2. data.
+3. categoria.
+4. descricao.
+5. fornecedor.
+6. valor.
+7. tem_nota_fiscal.
+8. moeda, quando presente.
+
+A ordem dos erros independe da ordem das chaves recebidas.
+
+ID ausente gera gerado-{indice_original}, mesmo se outro campo da despesa for inválido.
+
+Evitar colisões normalizadas com todos os IDs textuais fornecidos, inclusive em despesas inválidas, e com IDs já gerados.
+
+Em colisão, tentar gerado-{indice}-1, -2 e assim sucessivamente.
+
+ID presente vazio, somente espaços ou de tipo incorreto é inválido, retorna null e não recebe substituto.
+
+Item estruturalmente inválido permanece em items, mas fica fora de total_itens e contagens.
 
 ### RN-015 — Precedência e motivos
-**Regra:** Aplicar a ordem da seção 8; emitir um motivo principal, avisos separados. Duplicatas podem referenciar item recusado.
-**Origem:** Política contém regras sobrepostas. Evidência: d-013.
-**Aceite AC-015:** Airbnb 690 sem nota: NOTA_FISCAL_OBRIGATORIA, sem consumir teto de hotel.
 
-### RN-016 — Totais e status
-**Regra:** Solicitado soma todos os valores positivos estruturalmente válidos arredondados, inclusive duplicatas/recusas; reembolsável soma pagamentos; não reembolsável é diferença. Valores negativos/zero ignorados não entram. Contagens particionam itens.
-**Origem:** Schema de saída é definido pelo participante. Evidência: Todos os itens.
-**Aceite AC-016:** O resumo exclui recusas, duplicatas, ignorados e estruturalmente inválidos dos totais financeiros; `total_nao_reembolsavel` é a diferença entre solicitado e reembolsável. Os números do exemplo são recalculados na seção 9 e permanecem pendentes de validação automatizada.
+Aplicar o fluxo da seção 7.
 
-### RN-017 — Contrato de execução
-CLI aceita calcular --input <arquivo> --output <arquivo>. Sucesso retorna código 0; entrada/lote inválido retorna 2; falha de I/O retorna 3. Não misturar logs com resultado. Uma mesma entrada produz saída financeira idêntica, sem depender da hora de execução. **AC-017:** executar com exemplo grava JSON coerente e retorna 0; arquivo inexistente retorna 3; JSON inválido retorna 2.
+Falha estrutural impede avaliação de elegibilidade e limites, mas não impede obter o valor convertido para o total original quando houver dados suficientes.
 
-### RN-018 — Estrutura da saída
-Cada item gera exatamente um objeto em `items`; despesas estruturalmente inválidas permanecem na lista, mas ficam fora de `total_itens`, contagens e totais financeiros. **AC-018:** soma dos quatro status = `total_itens` (não necessariamente quantidade da entrada); soma dos pagamentos = `total_reembolsavel`; `total_solicitado - total_reembolsavel = total_nao_reembolsavel`; nenhum pagamento é negativo ou maior que o valor solicitado.
+ID repetido prevalece sobre duplicidade de conteúdo.
 
-## 6. Ambiguidades identificadas e decisões
-As referências abaixo são uma análise própria, não a lista fechada do avaliador. Quando a política é silenciosa, isso está indicado na origem, sem atribuir ao RH um texto que ele não escreveu.
+Duplicata não recebe nova avaliação de elegibilidade.
 
-### AMB-001 — Agregação diária
-**Texto original / origem:** Alimentação tem limite de R$ 60 por dia.
-**Dúvida:** Por item ou soma diária?
-**Decisão proposta:** Somar por colaborador, data e categoria; alimentação 60, transporte 80.
-**Justificativa:** Impedir multiplicação do teto pelo número de comprovantes.
-**Regra:** RN-001. **Evidência:** d-001/d-002.
+Para itens que seguem à avaliação de negócio, ordenar motivos assim:
 
-### AMB-002 — Distribuição do teto
-**Texto original / origem:** Despesas acima do limite são reembolsadas parcialmente.
-**Dúvida:** Rateio ou prioridade?
-**Decisão proposta:** Consumir saldo pela ordem dos itens no arquivo; itens recusados/ignorados não consomem saldo.
-**Justificativa:** Produzir distribuição simples, auditável e determinística.
-**Regra:** RN-002. **Evidência:** d-001/d-002.
+1. CATEGORIA_NAO_PERMITIDA.
+2. FORA_DA_COMPETENCIA.
+3. MOEDA_SEM_COTACAO ou ENTRADA_INVALIDA de conversão.
+4. NOTA_FISCAL_OBRIGATORIA_AUSENTE.
+5. LIMITE_DIARIO.
+6. LIMITE_MENSAL.
 
-### AMB-003 — Fronteira do limite
-**Texto original / origem:** Despesas acima do limite são reembolsadas parcialmente.
-**Dúvida:** Igual ao teto é parcial?
-**Decisão proposta:** Reembolsar o mínimo entre valor normalizado e saldo disponível; igualdade é aprovação integral; saldo zero recusa.
-**Justificativa:** Cortar somente excedente.
-**Regra:** RN-003. **Evidência:** d-014.
+Não repetir códigos.
 
-### AMB-004 — Obrigatoriedade fiscal
-**Texto original / origem:** Nota fiscal é obrigatória acima de R$ 100.
-**Dúvida:** 100,00 exige nota? Sobre valor original ou reembolsável?
-**Decisão proposta:** Exigir nota quando valor positivo original, antes de arredondar e limitar, for estritamente maior que 100; verificar por item.
-**Justificativa:** Não permitir que teto ou arredondamento dispense comprovante obrigatório.
-**Regra:** RN-004. **Evidência:** d-003/d-004/d-013.
+Categoria e período podem registrar seus impedimentos independentemente. Sem elegibilidade ou conversão, não calcular motivos fiscais ou de limites.
 
-### AMB-005 — Viagem sem campo
-**Texto original / origem:** Colaborador em viagem tem limites ampliados em 50%.
-**Dúvida:** Como comprovar viagem sem atributo?
-**Decisão proposta:** Não inferir viagem de descrição, hotel, aeroporto ou centro de custo. No formato atual não aplicar acréscimo; registrar aviso VIAGEM_NAO_INFORMADA no resultado.
-**Justificativa:** Evitar concessão sem informação verificável; restrição explícita e revisável.
-**Regra:** RN-005. **Evidência:** d-003/d-010/d-011.
+Quando houver bloqueio fiscal após cálculo preliminar, manter também os motivos dos limites que efetivamente reduziram esse cálculo preliminar.
 
-### AMB-006 — Competência
-**Texto original / origem:** Despesas devem ser lançadas dentro do período de competência.
-**Dúvida:** Data do gasto ou lançamento? Limites inclusivos?
-**Decisão proposta:** Usar data da despesa, pois lançamento não existe. Aceitar inicio <= data <= fim. Inicio/fim devem ser válidos, ordenados e estar no mês competencia.
-**Justificativa:** Preservar contrato existente e não inventar data de lançamento.
-**Regra:** RN-006. **Evidência:** d-008/d-014.
+### RN-016 — Totais
 
-### AMB-007 — Identificação de duplicatas
-**Texto original / origem:** Duplicatas devem ser tratadas.
-**Dúvida:** ID ou conteúdo? Qual item permanece?
-**Decisão proposta:** Comparar data, categoria normalizada, fornecedor e descrição exatos e valor decimal original equivalente. Ignorar id e tem_nota_fiscal na chave. Primeiro item estruturalmente válido é canônico, mesmo se recusado; posteriores pagam zero e referenciam seu índice.
-**Justificativa:** IDs diferentes não impedem duplicidade; não escolher comprovante mais favorável silenciosamente.
-**Regra:** RN-007. **Evidência:** d-006/d-007.
+total_original_convertido:
 
-### AMB-008 — Estorno
-**Texto original / origem:** Entrada de exemplo contém valor negativo; política não esclarece.
-**Dúvida:** Abater orçamento ou recusar?
-**Decisão proposta:** Ignorar valores negativos, reembolso zero, motivo ESTORNO_NAO_PROCESSADO; não compensar outras despesas.
-**Justificativa:** Não há vínculo com despesa original para conciliação segura.
-**Regra:** RN-008. **Evidência:** d-009.
+- Soma valores originais válidos convertidos para BRL.
+- É calculado antes das restrições de reembolso.
+- Inclui duplicatas, IDs repetidos e despesas inelegíveis, quando convertíveis.
+- Não inclui valores impossíveis de obter em BRL.
 
-### AMB-009 — Precisão monetária
-**Texto original / origem:** Entrada inclui 33.333.
-**Dúvida:** Rejeitar ou arredondar? Em qual momento?
-**Decisão proposta:** Arredondar cada valor positivo para duas casas, metade para cima; totalizar valores já arredondados. Manter valor original no resultado. Zero original ou arredondado é ignorado.
-**Justificativa:** Resultados monetários consistentes e auditáveis.
-**Regra:** RN-009. **Evidência:** d-011.
+total_solicitado:
 
-### AMB-010 — Quantidade de diárias
-**Texto original / origem:** Hospedagem tem limite de R$ 250 por diária.
-**Dúvida:** Como obter quantidade ausente?
-**Decisão proposta:** Não extrair números de texto livre. Considerar uma diária por data informada, compartilhada por todas as hospedagens do mesmo colaborador/data; sinalizar DIARIAS_NAO_INFORMADAS.
-**Justificativa:** Evitar interpretação frágil de descrições; decisão conservadora explícita.
-**Regra:** RN-010. **Evidência:** d-010/d-013.
+- Soma valores convertidos de despesas estruturalmente válidas, não duplicadas e sem ID repetido.
+- Exige categoria permitida, período válido e conversão disponível.
+- Exclui despesas bloqueadas pela exigência de nota fiscal.
+- Usa o valor convertido antes da redução por limites.
+- Inclui o valor de uma despesa elegível cujo saldo diário ou mensal esteja esgotado.
 
-### AMB-011 — Capitalização de valores
-**Texto original / origem:** Categorias fora da política não são reembolsáveis.
-**Dúvida:** ALIMENTACAO equivale a alimentacao?
-**Decisão proposta:** Remover espaços ASCII nas extremidades e converter A-Z em a-z somente no valor categoria. Aceitar alimentacao, transporte_urbano, hospedagem. Não remover acentos nem criar aliases.
-**Justificativa:** Resolver variação observada preservando vocabulário fechado.
-**Regra:** RN-011. **Evidência:** d-014/d-005.
+Uma recusa exclusivamente por limite não é recusa por inelegibilidade e não deve desaparecer da base solicitada.
 
-### AMB-012 — Fim de semana
-**Texto original / origem:** Política não restringe dias úteis.
-**Dúvida:** Plantão sábado pode reembolsar?
-**Decisão proposta:** Aplicar regras em todos os dias civis, inclusive sábados, domingos e feriados.
-**Justificativa:** Não criar restrição ausente da política.
-**Regra:** RN-012. **Evidência:** d-012.
+total_reembolsavel soma os valores efetivamente reembolsados.
 
-### AMB-013 — Capitalização de chaves
-**Texto original / origem:** Respeite o formato da entrada.
-**Dúvida:** temNotaFiscal ou TEM_NOTA_FISCAL são aliases?
-**Decisão proposta:** Chaves são exatas e sensíveis a maiúsculas: tem_nota_fiscal obrigatório e booleano real. Aliases não substituem campos. Campos adicionais são ignorados e não afetam regras.
-**Justificativa:** Separar normalização de um valor de mudança do contrato.
-**Regra:** RN-013. **Evidência:** Caso adicional solicitado.
+total_nao_reembolsavel = total_solicitado - total_reembolsavel.
 
-### AMB-014 — Falhas de entrada
-**Texto original / origem:** Entrada de referência define forma, mas não recuperação.
-**Dúvida:** Um item inválido aborta lote?
-**Decisão proposta:** JSON inválido, chaves JSON repetidas, envelope inválido ou IDs de despesa repetidos abortam lote. Item com campo obrigatório ausente/tipo inválido é recusado com DADO_INVALIDO; demais continuam. ID ausente gera id null e usa índice.
-**Justificativa:** Evitar perda do lote por uma despesa e garantir identidade não ambígua.
-**Regra:** RN-014. **Evidência:** Caso adicional.
+A diferença entre total_original_convertido e total_reembolsavel não deve ser publicada com o nome total_nao_reembolsavel, pois pertence a outra base.
 
-### AMB-015 — Precedência e motivos
-**Texto original / origem:** Política contém regras sobrepostas.
-**Dúvida:** Qual motivo prevalece?
-**Decisão proposta:** Aplicar a ordem da seção 8; emitir um motivo principal, avisos separados. Duplicatas podem referenciar item recusado.
-**Justificativa:** Evitar resultados e consumo de teto dependentes de verificações implícitas.
-**Regra:** RN-015. **Evidência:** d-013.
+### RN-017 — CLI e determinismo
 
-### AMB-016 — Totais e status
-**Texto original / origem:** Schema de saída é definido pelo participante.
-**Dúvida:** Negativos contam? Zero é parcial?
-**Decisão proposta:** Solicitado soma todos os valores positivos estruturalmente válidos arredondados, inclusive duplicatas/recusas; reembolsável soma pagamentos; não reembolsável é diferença. Valores negativos/zero ignorados não entram. Contagens particionam itens.
-**Justificativa:** Permitir conciliação explícita entre entrada, recusas e pagamento.
-**Regra:** RN-016. **Evidência:** Todos os itens.
+Contrato existente:
 
-## 7. Casos de borda
-| Caso | Resultado esperado |
-|---|---|
-| Teto exato e um centavo acima | RN-003: integral no teto, parcial acima |
-| Nota false para 99,99 / 100,00 / 100,01 | Sem bloqueio / sem bloqueio / recusa; teto continua aplicável |
-| 100,004 sem nota | Recusa fiscal, apesar de arredondar a 100,00 |
-| 33,335 e 33,333 | 33,34 e 33,33 |
-| Duas despesas 30,005 no mesmo dia | 30,01 + 29,99 = 60,00 |
-| Valor -45 / 0 / 0,004 | Ignorados, não consomem teto |
-| Alimentacao / ALIMENTACAO / alimentacao | Mesma categoria |
-| " alimentacao " | Aceita após remover espaços ASCII extremos |
-| alimentação / transporteUrbano | Categorias não previstas |
-| ID repetido após trim ASCII e comparação sem caixa | Segunda ocorrência estruturalmente válida é RECUSADO/DADO_INVALIDO com ID_REPETIDO; lote continua |
-| Mesmo conteúdo, IDs diferentes | Segundo IGNORADO/DUPLICATA; valores são comparados após arredondamento a duas casas |
-| Mesmo conteúdo com fornecedor em caixa diferente | Duplicata após NFC, trim ASCII externo e comparação sem diferença de caixa |
-| Valores 10,004 e 10,00, demais campos iguais | Podem ser duplicatas porque a comparação usa valores arredondados |
-| Canônico sem nota, repetição com nota | Canônico recusado; posterior ignorado; nenhum paga |
-| Item inválido antes de cópia válida | Inválido não vira canônico; válido pode pagar |
-| Despesa fora do mês e sem nota | FORA_DA_COMPETENCIA prevalece |
-| Categoria desconhecida e sem nota | CATEGORIA_NAO_PREVISTA prevalece |
-| Duas hospedagens com nota 200 + 100 na mesma data | 200 + 50; aviso de diárias em ambos |
-| Dia inicial/final / um dia fora | Aceita/aceita/recusa |
-| Campo booleano com valor "false" | DADO_INVALIDO |
-| despesas vazia | Sucesso e totais zero |
-| Datas inicial/final invertidas e válidas | Trocar automaticamente e retornar o período corrigido; competência inválida e datas inválidas do período aguardam decisão |
-| Data da despesa malformada/inexistente | Recusar somente o item como `DADO_INVALIDO`; lote continua |
-| Data válida da despesa fora da competência/período | Recusar somente o item como `FORA_DA_COMPETENCIA`; lote continua |
+calcular --input <arquivo> --output <arquivo>
 
-## 8. Ordem de aplicação das regras
-1. Fazer parsing JSON estrito; qualquer chave repetida em qualquer objeto causa `JSON_INVALIDO` e rejeita o lote inteiro, sem resultado financeiro parcial.
-2. Validar envelope e colaborador. Se qualquer campo obrigatório de `colaborador` estiver ausente, vazio ou com tipo incorreto, rejeitar lote inteiro com `ENTRADA_INVALIDA`.
-3. Validar período conforme RN-006. Trocar datas inicial/final invertidas quando ambas forem datas válidas; retornar as datas corrigidas. O tratamento de competência ausente/inválida e de datas de início/fim do período inválidas continua pendente; isso não altera a regra de validar cada data de despesa individualmente.
-4. Preparar conjunto de IDs normalizados de todos os IDs fornecidos em despesas, inclusive IDs presentes em despesas estruturalmente inválidas, apenas para evitar colisão com IDs gerados. Normalização de comparação: trim ASCII nas extremidades + comparação sem diferença de caixa.
-5. Percorrer despesas na ordem original e gerar o ID se o campo estiver ausente: `gerado-{índice}`; se colidir com ID fornecido ou já gerado, tentar `gerado-{índice}-1`, depois `-2` e assim por diante. Índice é zero-based na lista original. Se `id` estiver presente mas vazio, só espaços ASCII ou tipo incorreto, não gerar substituto: `id: null` e erro estrutural.
-6. Validar a estrutura de cada despesa em ordem fixa de campos: ID; demais campos obrigatórios na ordem do schema; por último campos opcionais definidos. Registrar todos os erros encontrados independentemente da ordem das chaves JSON. Item inválido recebe `RECUSADO`/`DADO_INVALIDO`, fica em `items`, não reserva ID e não entra em `total_itens`, contagens ou totais financeiros.
-7. Para despesa estruturalmente válida, verificar repetição de ID antes de deduplicação por conteúdo. A primeira ocorrência estruturalmente válida do ID é a referência; a posterior recebe `RECUSADO`/`DADO_INVALIDO`, `erros: [{campo: "id", codigo: "ID_REPETIDO"}]`, é contada em `total_itens` e `recusados`, não entra em totais financeiros, e o lote continua.
-8. Para IDs distintos, normalizar categoria, data, fornecedor (NFC + trim ASCII externo + sem diferença de caixa), descrição (mesma regra) e valor arredondado a duas casas. Não comparar `tem_nota_fiscal` nem campos extras. Duplicata de conteúdo recebe `IGNORADO`/`DUPLICATA`, valor arredondado preservado em `valor_solicitado`, reembolso zero e referência ao primeiro item estruturalmente válido com aquele conteúdo, mesmo que tenha sido recusado por regra de negócio. Conta em `total_itens`/`ignorados`, não entra em totais financeiros.
-9. Aplicar regras de negócio aos itens restantes na ordem definida: quantizar valor (metade para cima), ignorar negativos (`ESTORNO_NAO_PROCESSADO`) e valores zero/após arredondamento (`VALOR_ZERO`) com valores solicitados e reembolsáveis iguais a zero; verificar competência, categoria, nota fiscal; então aplicar os limites diários base e consumir saldo na ordem de entrada. Itens estruturalmente válidos recusados por regra de negócio mantêm `valor_solicitado` arredondado, mas são excluídos de totais financeiros. Itens válidos ignorados por zero/negativo contam nos status e em `total_itens`, mas não nos totais financeiros.
-10. Calcular resumo: `total_itens` e contagens apenas de itens estruturalmente válidos; `total_solicitado` soma somente valores elegíveis que chegam ao cálculo de limites; excluir recusados, duplicatas, ignorados e estruturalmente inválidos. `total_reembolsavel` soma pagamentos; `total_nao_reembolsavel = total_solicitado - total_reembolsavel`. Preservar ordem original de `items` e retornar `periodo` corrigido quando houver inversão automática.
+A forma concreta de informar politica-v4.json e cambio.json deve ser confirmada e documentada após inspeção da CLI existente. Não inventar argumentos como se já estivessem implementados.
 
-## 9. Critérios de aceite
-- [ ] AC-001 a AC-018 e os casos de borda estão associados a testes automatizados identificáveis; não marcar como validados antes da execução e aprovação dos testes.
-- [ ] Os 14 itens do exemplo geram os resultados recalculados abaixo; são resultados esperados da proposta, não gabarito oficial nem execução validada.
-- [ ] Campos ausentes, erros fiscais e duplicatas não desaparecem da saída.
-- [ ] JSON de entrada não muda de contrato para acomodar viagem/diárias.
-- [ ] Nenhum conhecimento externo é necessário para calcular a saída.
+Códigos de saída:
 
-### Resultado esperado recalculado do exemplo (proposta; ainda não validado por execução de testes)
-| Item | Solicitado | Reembolsável | Status | Motivo |
-|---|---:|---:|---|---|
-| d-001 |72,50|60,00|PARCIAL|LIMITE_APLICADO|
-| d-002 |38,00|0,00|RECUSADO|LIMITE_ESGOTADO|
-| d-003 |100,00|80,00|PARCIAL|LIMITE_APLICADO|
-| d-004 |100,01|0,00|RECUSADO|NOTA_FISCAL_OBRIGATORIA|
-| d-005 |89,00|0,00|RECUSADO|CATEGORIA_NAO_PREVISTA|
-| d-006 |54,90|54,90|APROVADO|DENTRO_DO_LIMITE|
-| d-007 |54,90|0,00|IGNORADO|DUPLICATA|
-| d-008 |41,00|0,00|RECUSADO|FORA_DA_COMPETENCIA|
-| d-009 |0,00|0,00|IGNORADO|ESTORNO_NAO_PROCESSADO|
-| d-010 |480,00|250,00|PARCIAL|LIMITE_APLICADO|
-| d-011 |33,33|33,33|APROVADO|DENTRO_DO_LIMITE|
-| d-012 |47,20|47,20|APROVADO|DENTRO_DO_LIMITE|
-| d-013 |690,00|0,00|RECUSADO|NOTA_FISCAL_OBRIGATORIA|
-| d-014 |61,00|60,00|PARCIAL|LIMITE_APLICADO|
+- 0: lote processado, inclusive com recusas individuais.
+- 2: entrada global, política ou câmbio inválidos.
+- 3: erro operacional de I/O da entrada principal ou escrita.
 
-Contagens dos 14 itens estruturalmente válidos: 3 aprovados, 4 parciais, 5 recusados, 2 ignorados. `total_solicitado` esperado: 848,93; `total_reembolsavel`: 585,43; `total_nao_reembolsavel`: 263,50. São cálculos derivados das regras propostas e precisam ser confirmados pelos testes automatizados; não são gabarito oficial nem execução validada.
+Política/câmbio ausentes ou ilegíveis mantêm seus códigos semânticos POLITICA_INVALIDA/CAMBIO_INVALIDO e saída 2.
 
-## 10. O que fica em aberto
-- **Mudança do Dia 2:** requisito recebido no envelope da Política v4; revisar e incorporar seus requisitos na próxima versão integrada da especificação.
-- **Correção 69 — decisão parcial registrada:** data de despesa malformada/inexistente recusa somente o item como `DADO_INVALIDO`; data válida fora da competência/período recusa somente o item como `FORA_DA_COMPETENCIA`; em ambos os casos o lote continua. Datas de início/fim válidas e invertidas são trocadas e retornadas. Permanece pendente definir o tratamento de competência ausente/inválida e de datas de início/fim do período ausentes, inválidas ou inexistentes.
-- **Execução de testes:** os critérios e vínculos de rastreabilidade são requisitos de trabalho; nenhum teste deve ser marcado como validado até execução e aprovação reais.
+Não misturar logs com resultado JSON.
 
-## 11. Rastreabilidade e testes
-Cada critério de aceite deve estar ligado a uma regra de negócio e a um teste automatizado identificável. A tabela abaixo define o vínculo funcional; o identificador concreto do arquivo de teste deve corresponder à suíte real do repositório e não deve ser inventado antes de inspecioná-la.
+Se não for possível gravar a saída, informar erro no canal de erro e retornar 3.
 
-| Critério | Regra(s) | Teste automatizado | Estado |
-|---|---|---|---|
-| AC-001 a AC-012 | RN-001 a RN-012 | Identificador da suíte correspondente a confirmar no repositório | Pendente de inspeção/execução |
-| AC-013 | RN-013 | Teste de chaves exatas, campos extras e booleanos | Pendente de inspeção/execução |
-| AC-014 | RN-014 | Testes de JSON inválido, chaves repetidas, envelope, colaborador incompleto, ID gerado/ inválido/repetido e validação de item | Pendente de inspeção/execução |
-| AC-015 | RN-015 | Teste de precedência de motivos e consumo de saldo | Pendente de inspeção/execução |
-| AC-016 | RN-016, RN-018 | Teste de resumo e exclusões dos totais | Pendente de inspeção/execução |
-| AC-017 | RN-017 | Testes CLI de sucesso, entrada inválida e erro de I/O | Pendente de inspeção/execução |
-| AC-018 | RN-018 | Teste de invariantes de saída | Pendente de inspeção/execução |
-| AC-019 | RN-014 | Chaves JSON repetidas rejeitam lote com `JSON_INVALIDO`, sem resultado parcial | Pendente de criar/verificar teste |
-| AC-020 | RN-014 | Colaborador incompleto rejeita lote com `ENTRADA_INVALIDA` | Pendente de criar/verificar teste |
-| AC-021 | RN-006 | Inversão de datas válidas é corrigida e período corrigido é retornado | Pendente de criar/verificar teste |
+Mesmos arquivos de entrada, política e câmbio devem produzir o mesmo resultado financeiro.
 
-AMB-001–AMB-016 → RN correspondente → AC da regra → teste automatizado: manter esse encadeamento explícito. Quando uma AMB não tiver relação direta com um AC, registrar “sem relação direta” em vez de criar vínculo artificial. 
+### RN-018 — Contagens e invariantes
+
+Cada despesa gera um objeto em items.
+
+total_itens conta somente despesas estruturalmente válidas, inclusive IDs repetidos e duplicatas por conteúdo.
+
+Invariantes:
+
+- aprovados + parciais + recusados + ignorados = total_itens.
+- total_reembolsavel = soma de valor_reembolsavel de items.
+- total_nao_reembolsavel = total_solicitado - total_reembolsavel.
+- 0 <= total_reembolsavel <= total_solicitado <= total_original_convertido.
+- Reembolso individual nunca é negativo.
+- Reembolso individual nunca supera o valor convertido disponível.
+
+### RN-019 — Política externa e exceções
+
+Ler exclusivamente politica-v4.json.
+
+Arquivo ausente, ilegível, JSON inválido, chaves repetidas ou estrutura obrigatória inválida: POLITICA_INVALIDA, sem resultado financeiro.
+
+Obter categorias, limites e periodicidades da política validada.
+
+Centro de custo desconhecido usa a política padrao. Categoria ausente na política aplicável recebe CATEGORIA_NAO_PERMITIDA.
+
+Não usar política padrão inventada se o arquivo estiver inválido.
+
+Para CC-COMERCIAL/representacao:
+
+- A categoria precisa ser permitida pela política aplicável.
+- O teto diário absoluto é 300.00 BRL.
+- O limite diário efetivo é o menor entre o limite diário aplicável da política, quando existente, e 300.00.
+- Política inferior prevalece.
+- Política superior nunca amplia o teto.
+- Outros limites aplicáveis, inclusive mensais, continuam valendo.
+- Se a categoria estiver permitida sem limite diário próprio, o teto de 300.00 continua aplicável.
+
+Para CC-ENG-PLATAFORMA/hospedagem:
+
+- Não reembolsar.
+- Usar CATEGORIA_NAO_PERMITIDA.
+- A restrição prevalece mesmo se a configuração genérica permitir hospedagem.
+
+### RN-020 — Validação do câmbio
+
+Ler exclusivamente cambio.json.
+
+Arquivo ausente, ilegível, vazio, JSON inválido, chaves repetidas, estrutura inválida ou qualquer cotação inválida: CAMBIO_INVALIDO.
+
+Validar todos os registros, mesmo os não usados pelo lote.
+
+Exigir:
+
+- Data real em YYYY-MM-DD.
+- Código de moeda com exatamente três letras ASCII maiúsculas.
+- Cotação numérica, positiva e finita.
+- Representação decimal convencional, sem string numérica ou notação científica.
+- Estrutura exata do schema original, sem campos inesperados ou obrigatórios ausentes.
+- Ausência de repetição da chave moeda+data.
+
+Cotação duplicada invalida o arquivo mesmo quando os valores são iguais ou numericamente equivalentes.
+
+Não rejeitar zeros finais: 5.4200 e 5.42 representam o mesmo valor.
+
+Códigos sintaticamente válidos, mas não suportados pelo arquivo/contrato de câmbio, não criam suporte cambial implicitamente. A despesa dependente de moeda sem cotação recebe MOEDA_SEM_COTACAO.
+
+Não impor quantidade arbitrária de casas à cotação. Se não for possível processá-la com exatidão e segurança, rejeitar o arquivo.
+
+### RN-021 — Conversão e exibição
+
+Usar aritmética decimal exata ou racional equivalente.
+
+Não usar ponto flutuante binário nem arredondar a cotação antes da multiplicação.
+
+Converter cada despesa individualmente. Aplicar half-up a duas casas ao resultado em BRL e então trabalhar com centavos inteiros.
+
+Exemplos de resultados de conversão:
+
+- 10.125 -> 10.13.
+- 0.005 -> 0.01.
+
+Esses números intermediários não são exemplos de valores originais aceitos com três casas.
+
+Separar a cotação exata de sua exibição. Exibir cotação com duas casas, usando half-up quando necessário, sem reutilizar o valor exibido no cálculo.
+
+Conversão que arredonde para 0.00 é válida.
+
+Conversão impossível por capacidade numérica:
+
+- Afeta somente a despesa.
+- Usa ENTRADA_INVALIDA.
+- Reembolso zero.
+- totais_completos=false.
+
+### RN-022 — Moeda e seleção da cotação
+
+moeda ausente significa BRL.
+
+Quando presente, exigir exatamente três letras ASCII maiúsculas. Não normalizar usd ou Usd para USD.
+
+null, vazio, espaços, tipo incorreto ou formato inválido invalidam somente a despesa com ENTRADA_INVALIDA.
+
+Para BRL, não consultar cotação individual. A validação global de cambio.json continua obrigatória.
+
+Para moeda estrangeira:
+
+1. Preferir a cotação da data da despesa.
+2. Na ausência, usar a cotação anterior mais recente da mesma moeda.
+3. Não impor horizonte máximo fixo.
+4. Nunca usar cotação futura.
+
+Sem cotação aplicável, usar MOEDA_SEM_COTACAO, reembolso zero e continuar o lote.
+
+### RN-023 — Teto e validade do valor
+
+Valor original máximo: 1.000.000.000.000,00, inclusive, na moeda declarada.
+
+O teto não se aplica ao valor convertido em BRL.
+
+Ausência, null, string, booleano, zero, negativo, notação científica, mais de duas casas ou valor acima do teto invalidam somente a despesa com ENTRADA_INVALIDA.
+
+A validação deve preservar o lexema numérico original para identificar notação científica e excesso de casas.
+
+### RN-024 — Limites simultâneos
+
+Converter antes de aplicar limites.
+
+Limites diários agregam por colaborador, centro de custo, categoria e data.
+
+Limites mensais agregam por colaborador, categoria e mês-calendário, independentemente do centro de custo.
+
+Quando diário e mensal se aplicarem, usar o menor saldo.
+
+Adicionar LIMITE_DIARIO quando o saldo diário for inferior ao valor convertido; adicionar LIMITE_MENSAL quando o saldo mensal for inferior ao valor convertido.
+
+Atualizar ambos somente depois da verificação fiscal, usando o valor efetivamente reembolsado.
+
+### RN-025 — Avaliação fiscal e motivos múltiplos
+
+Calcular limites sem consumir saldo.
+
+Avaliar a nota sobre o valor preliminar.
+
+Se o valor preliminar for maior que 100.00 e não houver nota, zerar o reembolso.
+
+Depois de definir o pagamento final, atualizar os saldos.
+
+motivos é lista de códigos únicos na ordem de RN-015.
+
+### RN-026 — Completude e serialização
+
+Se não for possível determinar um valor convertido válido para qualquer despesa, excluí-la dos totais monetários e usar totais_completos=false.
+
+Isso inclui valor original inválido, moeda inválida, ausência de cotação ou dados necessários à conversão inválidos.
+
+Outros defeitos estruturais não impedem, por si só, o cálculo do bruto convertido quando valor, moeda e demais dados necessários forem válidos.
+
+Se todos os valores puderem ser determinados, totais_completos=true.
+
+Lista vazia resulta em totais zero e totais_completos=true, após validar os arquivos globais obrigatórios.
+
+Campos monetários de saída são números JSON, nunca strings, escritos com exatamente duas casas decimais.
+
+Exemplos: 0.00, 10.50, 300.00.
+
+A formatação deve ser verificada no texto serializado; um parser JSON pode descartar zeros finais.
+
+## 7. Ordem de processamento
+
+1. Ler e fazer parsing estrito da entrada principal.
+2. Validar envelope e colaborador.
+3. Validar competência e período; corrigir inversão válida.
+4. Carregar e validar integralmente a política.
+5. Carregar e validar integralmente o câmbio.
+6. Preparar o conjunto de IDs fornecidos para evitar colisões.
+7. Gerar IDs ausentes e validar a estrutura de cada despesa.
+8. Determinar, quando possível, o valor convertido para o total original, independentemente da elegibilidade.
+9. Para itens estruturalmente válidos, verificar ID repetido.
+10. Para IDs não repetidos, verificar duplicidade por conteúdo.
+11. Avaliar categoria e período dos itens não duplicados.
+12. Exigir conversão disponível antes do cálculo de reembolso.
+13. Calcular os saldos diário e mensal e o valor preliminar.
+14. Verificar a exigência de nota fiscal.
+15. Definir pagamento, motivos e status.
+16. Consumir os saldos somente pelo pagamento final.
+17. Calcular contagens, totais e completude.
+18. Serializar a saída preservando a ordem dos itens.
+
+Não executar verificações dependentes de dados indisponíveis. Uma falha de conversão não impede registrar inelegibilidade de categoria/período quando esses dados forem válidos.
+
+## 8. Critérios de aceite
+
+Os identificadores abaixo descrevem testes requeridos. Não representam testes já existentes ou executados.
+
+| AC | Resultado verificável | RN |
+|---|---|---|
+| AC-001 | Com limite diário 60.00, despesas 72.50 e 38.00 pagam 60.00 e 0.00 | RN-001/002 |
+| AC-002 | Invertendo a ordem, 38.00 e 72.50 pagam 38.00 e 22.00 | RN-002 |
+| AC-003 | Fronteiras 59.99/60.00/60.01 pagam 59.99/60.00/60.00 sob limite 60.00 | RN-003 |
+| AC-004 | Sem nota, preliminar 100.00 não bloqueia; 100.01 bloqueia sem consumir saldo | RN-004 |
+| AC-005 | Texto de viagem não amplia limite; sucesso contém VIAGEM_NAO_INFORMADA | RN-005 |
+| AC-006 | Limites do período são inclusivos; data inválida afeta só o item; período global inválido rejeita lote | RN-006 |
+| AC-007 | ID repetido e duplicata por conteúdo têm comportamentos distintos e referência canônica correta | RN-007 |
+| AC-008 | Zero e negativo invalidam somente a despesa, sem compensar saldos | RN-008 |
+| AC-009 | Inteiro e uma/duas casas são aceitos; mais de duas casas não são arredondadas | RN-009 |
+| AC-010 | Texto “2 diárias” não duplica limite; hospedagens compartilham a diária da data | RN-010 |
+| AC-011 | Categoria normaliza espaços/caixa ASCII; permissão vem da política, sem aliases | RN-011 |
+| AC-012 | Fim de semana não causa recusa adicional | RN-012 |
+| AC-013 | Chaves são exatas, booleanos são reais e campos desconhecidos não afetam cálculo | RN-013 |
+| AC-014 | Todos os erros estruturais são ordenados; IDs ausentes/ inválidos/colidentes seguem o contrato | RN-014 |
+| AC-015 | Motivos são únicos e ordenados; ID repetido precede conteúdo duplicado | RN-015 |
+| AC-016 | Totais usam suas bases distintas, incluindo recusa exclusiva por limite na base solicitada | RN-016 |
+| AC-017 | CLI distingue processamento, erro global e I/O, sem logs no JSON | RN-017 |
+| AC-018 | Contagens e invariantes financeiros são satisfeitos | RN-018 |
+| AC-019 | Chave JSON repetida na entrada principal rejeita lote com JSON_INVALIDO | RN-014 |
+| AC-020 | Colaborador obrigatório incompleto rejeita lote com ENTRADA_INVALIDA | RN-014 |
+| AC-021 | Período válido invertido é corrigido e retornado | RN-006 |
+| AC-022 | Política válida é carregada; ausência/invalidade retorna POLITICA_INVALIDA | RN-019 |
+| AC-023 | Qualquer registro cambial inválido ou moeda+data repetidos rejeita cambio.json | RN-020 |
+| AC-024 | Moeda ausente assume BRL; usd/Usd/null/tipo incorreto invalidam somente o item | RN-022 |
+| AC-025 | Cotação exata precede anterior; cotação futura nunca é usada | RN-022 |
+| AC-026 | Conversão exata usa half-up por despesa; exibição não altera a cotação interna | RN-021 |
+| AC-027 | Teto original é inclusivo; notação científica e valores inválidos afetam somente o item | RN-023 |
+| AC-028 | Limites diário/mensal usam menor saldo e consomem só o pagamento final | RN-024 |
+| AC-029 | Bloqueio fiscal após limites zera pagamento sem consumir nenhum saldo | RN-025 |
+| AC-030 | Falha individual de conversão preserva item, continua lote e marca totais incompletos | RN-022/026 |
+| AC-031 | Bruto inclui convertíveis inelegíveis; solicitado usa base elegível; não reembolsável é solicitado menos pagamento | RN-016/026 |
+| AC-032 | Motivos não se repetem e números monetários são serializados com duas casas | RN-015/026 |
+| AC-033 | CC desconhecido usa padrao; categoria ausente é recusada | RN-019 |
+| AC-034 | Em representação comercial, política 200.00 limita a 200.00 e política 500.00 limita a 300.00 | RN-019 |
+| AC-035 | Hospedagem em CC-ENG-PLATAFORMA não reembolsa mesmo com permissão genérica | RN-019 |
+| AC-036 | Valores iguais em moedas diferentes não constituem duplicata por conteúdo | RN-007 |
+
+Cada AC deve ser associado a um teste real quando a suíte for inspecionada. Os nomes de testes em tasks.md são nomes propostos, não evidências de execução.
+
+## 9. Exemplos de referência
+
+### 9.1 Limite diário
+
+Fixture: alimentação permitida, limite diário 60.00, sem limite mensal restritivo.
+
+Duas despesas distintas, elegíveis, de 72.50 e 38.00:
+
+- Reembolsos: 60.00 e 0.00.
+- total_original_convertido: 110.50.
+- total_solicitado: 110.50.
+- total_reembolsavel: 60.00.
+- total_nao_reembolsavel: 50.50.
+
+A segunda despesa permanece na base solicitada porque a recusa decorre exclusivamente do limite.
+
+### 9.2 Categoria proibida
+
+Despesa BRL válida de 40.00 em categoria proibida:
+
+- total_original_convertido: 40.00.
+- total_solicitado: 0.00.
+- total_reembolsavel: 0.00.
+- total_nao_reembolsavel: 0.00.
+- Motivo: CATEGORIA_NAO_PERMITIDA.
+
+O bruto e o solicitado têm bases diferentes por decisão explícita.
+
+### 9.3 Nota fiscal e limite
+
+Despesa válida de 150.00 sem nota:
+
+- Com saldo aplicável 80.00: preliminar 80.00, reembolso 80.00; não há bloqueio fiscal.
+- Com saldo aplicável 120.00: preliminar 120.00, reembolso 0.00; nenhum saldo é consumido.
+
+### 9.4 Representação comercial
+
+Com categoria permitida:
+
+- Limite diário da política 200.00: teto efetivo 200.00.
+- Limite diário da política 300.00: teto efetivo 300.00.
+- Limite diário da política 500.00: teto efetivo 300.00.
+
+### 9.5 Precisão
+
+- Valor original 33.333: inválido por item.
+- Valor original 33.3: aceito e exibido como 33.30.
+- Cotação 5.4200: aceita; cálculo usa exatamente 5.42.
+- Cotação 5.425: cálculo usa exatamente 5.425; exibição 5.43.
+
+O quadro antigo dos 14 itens não é mantido como gabarito desta revisão: contém expectativas anteriores incompatíveis com as novas validações. A fixture original deve ser reprocessada e seus resultados registrados após inspeção dos arquivos reais.
+
+## 10. Rastreabilidade e entrega
+
+Manter o encadeamento:
+
+AMB/decisão -> RN -> AC -> tarefa -> teste real -> resultado de execução.
+
+DECISIONS.md registra origem, substituições e refinamentos.
+
+tasks.md mantém tarefas pequenas, critérios verificáveis e nenhuma conclusão presumida.
+
+## 11. Pendências reais
+
+- Conferir os schemas originais de politica-v4.json e cambio.json.
+- Inspecionar a implementação e a suíte existentes.
+- Confirmar os caminhos/argumentos reais dos arquivos externos na CLI.
+- Implementar o contrato consolidado.
+- Executar testes e recalcular a fixture original.
+- Registrar evidências antes de marcar ACs ou tarefas como concluídos.
+
+Não há pendência de decisão sobre período global inválido ou sobre o teto de representação comercial: ambos estão definidos nesta versão.

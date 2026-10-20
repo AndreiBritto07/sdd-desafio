@@ -1,238 +1,290 @@
-# Decisões do motor de reembolso
+# Decisões — Motor de Cálculo de Reembolso
 
-**Estado:** registro de propostas, pendente de aprovação oficial. As escolhas de revisão abaixo não equivalem a aprovação oficial do participante. `spec.md` e `DECISIONS.md` mantêm versionamento independente; a relação entre versões deve ser explicada, não presumida como numeração igual. A versão proposta de `spec.md` nesta revisão é 0.2.
+**Revisão documental:** 20/10/2026 — consolidação pós-Envelope 2  
+**Relacionamento:** sustenta spec.md v0.2 e tasks.md desta revisão.  
+**Estado:** decisões consolidadas para implementação; aprovação oficial e testes não presumidos.
 
-Registro das ambiguidades (AMB) e decisões de revisão. Cada decisão deve referenciar a regra (RN), critério de aceite (AC) e teste automatizado correspondente quando houver relação direta; vínculos ainda não confirmados são marcados como pendentes.
+O versionamento deste registro é independente da versão da especificação.
 
-## Índice
+## 1. Critério de decisão
 
-| AMB | Tema | Regra | Evidência |
+Aplicar a seguinte prioridade, definida pelo usuário:
+
+1. Alinhamento com respostas e decisões anteriores.
+2. Na ausência de conflito, opção recomendada.
+
+Decisões posteriores explícitas substituem interpretações anteriores incompatíveis.
+
+Não manter no contrato vigente duas regras contraditórias sob a justificativa de que uma está em adendo.
+
+## 2. Ambiguidades originais consolidadas
+
+| ID | Origem/dúvida | Decisão vigente | Relação |
 |---|---|---|---|
-| AMB-001 | Agregação diária | RN-001 | d-001/d-002 |
-| AMB-002 | Distribuição do teto | RN-002 | d-001/d-002 |
-| AMB-003 | Fronteira do limite | RN-003 | d-014 |
-| AMB-004 | Obrigatoriedade fiscal | RN-004 | d-003/d-004/d-013 |
-| AMB-005 | Viagem sem campo | RN-005 | d-003/d-010/d-011 |
-| AMB-006 | Competência | RN-006 | d-008/d-014 |
-| AMB-007 | Identificação de duplicatas | RN-007 | d-006/d-007 |
-| AMB-008 | Estorno | RN-008 | d-009 |
-| AMB-009 | Precisão monetária | RN-009 | d-011 |
-| AMB-010 | Quantidade de diárias | RN-010 | d-010/d-013 |
-| AMB-011 | Capitalização de valores | RN-011 | d-014/d-005 |
-| AMB-012 | Fim de semana | RN-012 | d-012 |
-| AMB-013 | Capitalização de chaves | RN-013 | Caso adicional solicitado |
-| AMB-014 | Falhas de entrada | RN-014 | Caso adicional |
-| AMB-015 | Precedência e motivos | RN-015 | d-013 |
-| AMB-016 | Totais e status | RN-016 | Todos os itens |
+| AMB-001 | Limite diário: por item ou agregado? | Agregar por colaborador, centro de custo, categoria e data; obter valor da política | RN-001; AC-001 |
+| AMB-002 | Como distribuir o teto? | Ordem original; consumir somente reembolso efetivo | RN-002; AC-002 |
+| AMB-003 | Igualdade com teto é parcial? | Igualdade é integral; cortar somente excedente | RN-003; AC-003 |
+| AMB-004 | NF acima de 100: qual base? | Valor preliminar reembolsável após conversão e limites, estritamente maior que 100.00 | RN-004; AC-004 |
+| AMB-005 | Como identificar viagem sem campo? | Não inferir; não ampliar limite; emitir aviso global | RN-005; AC-005 |
+| AMB-006 | Competência, datas inválidas e inversão | Data individual inválida afeta item; período global inválido rejeita lote; inversão válida é corrigida | RN-006; AC-006/021 |
+| AMB-007 | Duplicata por ID ou conteúdo? | Estrutura, ID e depois conteúdo; preservar canônico e normalizações definidas | RN-007; AC-007/036 |
+| AMB-008 | Estorno negativo | No contrato consolidado, zero/negativo são inválidos por item; não compensar saldos | RN-008; AC-008 |
+| AMB-009 | Valor original com três casas | Invalidar somente o item; aceitar inteiro/uma/duas casas; formatar saída com duas | RN-009; AC-009 |
+| AMB-010 | Número de diárias ausente | Não extrair do texto; uma diária compartilhada por data | RN-010; AC-010 |
+| AMB-011 | Caixa e categorias permitidas | Normalizar categoria por trim/caixa ASCII; categorias vêm da política | RN-011; AC-011 |
+| AMB-012 | Fim de semana | Aplicar regras em todos os dias civis | RN-012; AC-012 |
+| AMB-013 | Aliases de chaves e extras | Chaves exatas; extras ignorados na entrada principal | RN-013; AC-013 |
+| AMB-014 | Falha individual aborta lote? | Somente falhas globais abortam; itens inválidos permanecem na saída | RN-014; AC-014/019/020 |
+| AMB-015 | Qual motivo prevalece? | Lista normativa única e ordenada; campo singular por compatibilidade | RN-015; AC-015/032 |
+| AMB-016 | Base dos totais e contagens | Separar bruto convertível, solicitado elegível e pagamento | RN-016/018; AC-016/018/031 |
 
----
+A motivação comum é manter processamento determinístico, auditável e compatível com as decisões explícitas, sem inferências silenciosas.
 
-## AMB-001 — Agregação diária
+## 3. Registro das correções 1–69
 
-- **Texto original:** Alimentação tem limite de R$ 60 por dia.
-- **Dúvida:** Por item ou soma diária?
-- **Decisão:** Somar por colaborador, data e categoria. Alimentação: R$ 60. Transporte: R$ 80.
-- **Justificativa:** Impedir multiplicação do teto pelo número de comprovantes.
-- **Regra:** RN-001. **Evidência:** d-001/d-002.
+A numeração é preservada para rastrear a revisão anterior.
 
-## AMB-002 — Distribuição do teto
+“Refinada” ou “substituída” identifica evolução da regra, não uma alternativa de execução.
 
-- **Texto original:** Despesas acima do limite são reembolsadas parcialmente.
-- **Dúvida:** Rateio ou prioridade?
-- **Decisão:** Consumir o saldo pela ordem dos itens no arquivo. Itens recusados ou ignorados não consomem saldo.
-- **Justificativa:** Distribuição simples, auditável e determinística.
-- **Regra:** RN-002. **Evidência:** d-001/d-002.
+| Correção | Consolidação vigente |
+|---|---|
+| 1 | Gerar ID quando ausente |
+| 2 | Envelope 2 incorporado ao contrato único |
+| 3 | Inválidos e duplicatas não entram em total_solicitado; bruto convertível segue RN-016 |
+| 4 | Não inferir viagem/diárias de texto |
+| 5 | Validar AC somente após execução real de teste |
+| 6 | Manter primeiro ID estruturalmente válido; recusar repetição posterior |
+| 7 | Manter itens inválidos em items, com erros e motivos |
+| 8 | Gerar ID determinístico por índice, evitando colisões |
+| 9 | Substituída: Envelope 2 já recebido e incorporado documentalmente |
+| 10 | Consolidação não equivale a aprovação oficial |
+| 11 | ACs no spec; fixtures completas e testes na suíte |
+| 12 | Refinada: solicitado exclui inelegíveis, duplicados e inválidos; recusa exclusiva por limite permanece na base |
+| 13 | Rastrear decisão -> RN -> AC -> teste; não inventar relações |
+| 14 | Versionamento independente de spec e decisões |
+| 15 | Manter spec v0.2 e preservar versão anterior no Git |
+| 16 | Manter campos de resultado; motivos passa a ser fonte normativa |
+| 17 | Colisão de ID gerado é resolvida sem abortar lote |
+| 18 | Usar gerado-{indice}, depois sufixos -1, -2 etc. |
+| 19 | Recalcular exemplos; não declarar resultados testados sem execução |
+| 20 | Substituída: Envelope 2 não está mais pendente de recebimento |
+| 21 | Item estruturalmente inválido não reserva ID para deduplicação |
+| 22 | Separar repetição de ID e duplicidade por conteúdo |
+| 23 | ID presente inválido não é substituído |
+| 24 | Gerar ID ausente mesmo quando outro campo estiver inválido |
+| 25 | total_itens exclui itens estruturalmente inválidos |
+| 26 | ID repetido precede comparação por conteúdo |
+| 27 | total_solicitado usa base elegível antes da redução por limites |
+| 28 | Contagens excluem itens estruturalmente inválidos |
+| 29 | Repetição de ID prevalece sobre conteúdo duplicado |
+| 30 | Repetição de ID recusa somente ocorrência posterior |
+| 31 | Emitir versao_spec "0.2" em sucesso e falha |
+| 32 | Comparar IDs com trim ASCII externo e sem diferença de caixa |
+| 33 | Preservar ID original válido na saída |
+| 34 | ID repetido usa DADO_INVALIDO e erro ID_REPETIDO |
+| 35 | Não usar IDS_REPETIDOS como erro de lote |
+| 36 | Resumo conta somente itens estruturalmente válidos |
+| 37 | Testar IDs equivalentes por espaços e caixa |
+| 38 | ID presente inválido retorna null |
+| 39 | Colisão de ID gerado usa a mesma normalização |
+| 40 | Validar estrutura, ID, conteúdo e depois elegibilidade |
+| 41 | Duplicata preserva valor convertido informativo e reembolsa zero |
+| 42 | Recusa mantém valor informativo, mas só inelegibilidade exclui da base solicitada; bruto tem base própria |
+| 43 | ID ausente não gera erro; inválido e repetido têm códigos específicos |
+| 44 | Preservar nome total_solicitado e explicitar sua base |
+| 45 | total_nao_reembolsavel = total_solicitado - total_reembolsavel |
+| 46 | ID repetido conta como recusado válido, sem entrar no solicitado |
+| 47 | Evitar colisão com IDs fornecidos até em despesas inválidas |
+| 48 | Substituída: zero/negativo agora são inválidos por item |
+| 49 | Refinada: valor original inválido não é normalizado como aceito; reembolso zero |
+| 50 | Usar índice zero-based da lista original completa |
+| 51 | Duplicata conta como ignorada válida, sem entrar no solicitado |
+| 52 | Referenciar primeiro canônico estruturalmente válido, mesmo se inelegível |
+| 53 | Fornecedor/descrição: trim externo e comparação sem caixa; preservar espaços internos/acentos |
+| 54 | Aplicar NFC antes de comparar fornecedor/descrição |
+| 55 | Refinada: entrada original precisa ter até duas casas; half-up aplica-se à conversão |
+| 56 | tem_nota_fiscal não participa da chave de conteúdo |
+| 57 | Comparar datas válidas em representação comum |
+| 58 | Comparar categoria normalizada |
+| 59 | Registrar todos os erros estruturais |
+| 60 | Ordem dos erros independe da ordem das chaves |
+| 61 | Ordem: ID, obrigatórios na ordem do schema, opcionais |
+| 62 | Ignorar campos desconhecidos nas despesas |
+| 63 | Ignorar campos desconhecidos no envelope |
+| 64 | Manter tolerância a extras da entrada principal; não estender aos schemas externos |
+| 65 | Corrigir automaticamente período válido invertido |
+| 66 | Retornar período corrigido usado no cálculo |
+| 67 | Chaves repetidas na entrada principal causam JSON_INVALIDO |
+| 68 | Colaborador obrigatório incompleto/inválido causa ENTRADA_INVALIDA global |
+| 69 | Data individual inválida afeta item; data válida fora do período afeta elegibilidade; período global inválido rejeita lote |
 
-## AMB-003 — Fronteira do limite
+Os vínculos funcionais estão nas AMBs, no registro E2 e na matriz AC/RN do spec. As tarefas apontam para essas mesmas referências.
 
-- **Texto original:** Despesas acima do limite são reembolsadas parcialmente.
-- **Dúvida:** Igual ao teto é parcial?
-- **Decisão:** Reembolsar o mínimo entre o valor normalizado e o saldo disponível. Igualdade é aprovação integral. Saldo zero recusa.
-- **Justificativa:** Cortar somente o excedente.
-- **Regra:** RN-003. **Evidência:** d-014.
+## 4. Registro do Envelope 2
 
-## AMB-004 — Obrigatoriedade fiscal
+Os identificadores E2 preservam o registro anterior e não equivalem à numeração das perguntas conversacionais.
 
-- **Texto original:** Nota fiscal é obrigatória acima de R$ 100.
-- **Dúvida:** R$ 100,00 exige nota? Sobre o valor original ou o reembolsável?
-- **Decisão:** Exigir nota quando o valor original positivo, antes de arredondar e limitar, for estritamente maior que R$ 100. A verificação é feita por item.
-- **Justificativa:** Impedir que teto ou arredondamento dispensem comprovante obrigatório.
-- **Regra:** RN-004. **Evidência:** d-003/d-004/d-013.
+| ID | Decisão vigente | Relação |
+|---|---|---|
+| E2-001 | Repetição moeda+data invalida cambio.json, mesmo com valores iguais | RN-020; AC-023 |
+| E2-002 | Cotação ausente, não numérica ou não positiva invalida arquivo | RN-020; AC-023 |
+| E2-003 | Data cambial real e moeda com três letras ASCII maiúsculas | RN-020; AC-023 |
+| E2-004 | Schema cambial estrito, sem extras/obrigatórios ausentes | RN-020; AC-023 |
+| E2-005 | Não inventar suporte a moeda; sem cotação aplicável, recusar somente despesa | RN-020/022; AC-030 |
+| E2-006 | Validar todos os registros cambiais, inclusive não usados | RN-020; AC-023 |
+| E2-007 | Câmbio ausente/vazio/inválido causa CAMBIO_INVALIDO | RN-020; AC-023 |
+| E2-008 | Moeda ausente assume BRL; presente inválida afeta item | RN-022; AC-024 |
+| E2-009 | Não normalizar caixa da moeda | RN-022; AC-024 |
+| E2-010 | BRL não exige lookup individual; validação global do câmbio continua obrigatória | RN-022; AC-024 |
+| E2-011 | Valor ausente/inválido/zero/negativo invalida somente despesa | RN-023; AC-008/027 |
+| E2-012 | Valor deve ser número JSON, nunca string numérica | RN-023; AC-027 |
+| E2-013 | Notação científica é proibida no valor original | RN-023; AC-027 |
+| E2-014 | JSON usa ponto decimal; sintaxe malformada rejeita lote | RN-014/023; AC-019/027 |
+| E2-015 | Valor fora da capacidade numérica afeta somente item | RN-023; AC-027 |
+| E2-016 | Teto original inclusivo de 1.000.000.000.000,00 | RN-023; AC-027 |
+| E2-017 | Teto aplica-se à moeda original, não ao BRL convertido | RN-023; AC-027 |
+| E2-018 | Overflow de conversão afeta item e marca totais incompletos | RN-021/026; AC-030 |
+| E2-019 | Conversão válida arredondada a zero é aceita, sem consumir saldo | RN-021; AC-026 |
+| E2-020 | Converter e aplicar half-up por despesa | RN-021; AC-026 |
+| E2-021 | Depois da conversão, usar centavos inteiros | RN-021; AC-026 |
+| E2-022 | Usar decimal/racional exato, sem ponto flutuante binário | RN-021; AC-026 |
+| E2-023 | Cotação não aceita string, notação científica, zero ou negativo | RN-020; AC-023 |
+| E2-024 | Cotação admite precisão variável, desde que exata e segura | RN-020/021; AC-023/026 |
+| E2-025 | Zeros finais não alteram valor nem a regra moeda+data | RN-020/021; AC-023/026 |
+| E2-026 | Aceitar zeros finais; normalizar apenas exibição | RN-021; AC-026/032 |
+| E2-027 | Exibir cotações com duas casas e ponto decimal | RN-021; AC-032 |
+| E2-028 | Separar cotação interna exata da exibição | RN-021; AC-026 |
+| E2-029 | Campos monetários são números JSON serializados com duas casas | RN-026; AC-032 |
+| E2-030 | Motivos múltiplos, únicos e ordenados; diário antes de mensal | RN-015/025; AC-015/032 |
+| E2-031 | JSON principal malformado/repetido causa JSON_INVALIDO global | RN-014; AC-019 |
+| E2-032 | Período global inválido rejeita lote; data individual inválida não | RN-006; AC-006 |
+| E2-033 | Política ausente/ilegível/inválida causa POLITICA_INVALIDA | RN-019; AC-022 |
+| E2-034 | Centro desconhecido usa padrao; categoria ausente não reembolsa | RN-019; AC-033 |
+| E2-035 | Limites diário e mensal usam menor saldo e ordem original | RN-024; AC-028 |
+| E2-036 | Bruto convertível tem base distinta do solicitado; falhas de conversão tornam totais incompletos | RN-016/026; AC-030/031 |
+| E2-037 | NF depende do preliminar >100.00; bloqueio não consome saldo | RN-004/025; AC-004/029 |
+| E2-038 | Representação comercial tem teto absoluto 300.00, redutível pela política; hospedagem em CC-ENG-PLATAFORMA é proibida | RN-019; AC-034/035 |
 
-## AMB-005 — Viagem sem campo
+## 5. Consolidação desta revisão
 
-- **Texto original:** Colaborador em viagem tem limites ampliados em 50%.
-- **Dúvida:** Como comprovar viagem sem atributo?
-- **Decisão:** Não inferir viagem a partir de descrição, hotel, aeroporto ou centro de custo. No formato atual, não aplicar acréscimo e registrar o aviso `VIAGEM_NAO_INFORMADA` no resultado.
-- **Justificativa:** Evitar concessão sem informação verificável. A restrição é explícita e pode ser revisada.
-- **Regra:** RN-005. **Evidência:** d-003/d-010/d-011.
+### CONS-001 — Representação comercial
 
-## AMB-006 — Competência
+**Origem:** escolha final C do usuário.
 
-- **Texto original:** Despesas devem ser lançadas dentro do período de competência.
-- **Dúvida:** Data do gasto ou do lançamento? Limites são inclusivos? Como tratar datas inválidas e despesas fora da competência?
-- **Decisão:** Usar a data da despesa, pois não existe data de lançamento. Aceitar `início <= data <= fim`. Se as datas de início/fim forem válidas e estiverem invertidas, trocá-las e retornar o período corrigido. A data da despesa deve ser uma data real no formato exato `YYYY-MM-DD`; data malformada, ausente ou inexistente invalida somente a despesa (`RECUSADO`/`DADO_INVALIDO`), com `CAMPO_OBRIGATORIO` para ausência ou `TIPO_OU_FORMATO_INVALIDO` para valor malformado/inexistente, e o lote continua. Uma data válida fora do período/competência invalida somente a elegibilidade daquela despesa (`RECUSADO`/`FORA_DA_COMPETENCIA`), sem entrar nos totais financeiros; o lote continua. Não corrigir nem reinterpretar datas de despesa.
-- **Justificativa:** Evitar que uma despesa com data inválida ou fora do período contamine os totais, sem descartar despesas válidas do mesmo lote. Manter o formato de data já definido e preservar processamento individual de despesas.
-- **Pendente:** Competência ausente/inválida e datas de início/fim do período ausentes, inválidas ou inexistentes ainda precisam de decisão explícita.
-- **Regra:** RN-006. **Evidência:** d-008/d-014.
+**Decisão:** para CC-COMERCIAL/representacao, usar o menor entre o limite diário da política, quando existente, e 300.00 BRL.
 
-## AMB-007 — Identificação de duplicatas
+Se a política permitir a categoria sem definir limite diário próprio, o teto de 300.00 continua aplicável.
 
-- **Texto original:** Duplicatas devem ser tratadas.
-- **Dúvida:** A identificação é por ID ou por conteúdo? Qual item permanece?
-- **Decisão proposta:** Verificar ID primeiro, após trim ASCII nas extremidades e comparação sem diferença de caixa. Ocorrência posterior de ID repetido é `RECUSADO`/`DADO_INVALIDO` com `ID_REPETIDO`. Só IDs diferentes entram na comparação de conteúdo: data normalizada, categoria normalizada, fornecedor/descrição após Unicode NFC, trim ASCII externo e comparação sem diferença de caixa, e valor arredondado a duas casas. Ignorar `tem_nota_fiscal` e campos extras. Primeiro item estruturalmente válido com aquele conteúdo é canônico mesmo se recusado por regra de negócio; cópia é `IGNORADO`/`DUPLICATA` e aponta para o índice canônico.
-- **Justificativa:** IDs diferentes não impedem duplicidade. Não escolher silenciosamente o comprovante mais favorável.
-- **Regra:** RN-007. **Evidência:** d-006/d-007.
+A categoria precisa estar permitida. Não usar a exceção para autorizar categoria ausente.
 
-## AMB-008 — Estorno
+**Justificativa:** 300.00 é teto máximo, não autorização para ampliar limite inferior.
 
-- **Texto original:** A entrada de exemplo contém valor negativo. A política não esclarece.
-- **Dúvida:** Abater do orçamento ou recusar?
-- **Decisão:** Ignorar valores negativos, com reembolso zero e motivo `ESTORNO_NAO_PROCESSADO`. Não compensar outras despesas.
-- **Justificativa:** Não há vínculo com a despesa original para conciliação segura.
-- **Regra:** RN-008. **Evidência:** d-009.
+**Relação:** RN-019; AC-034; T-041.
 
-## AMB-009 — Precisão monetária
+### CONS-002 — Nomes e bases dos totais
 
-- **Texto original:** A entrada inclui 33.333.
-- **Dúvida:** Rejeitar ou arredondar? Em qual momento?
-- **Decisão:** Arredondar cada valor positivo para duas casas, com metade para cima, e totalizar os valores já arredondados. O valor original é mantido no resultado. Valor zero, original ou arredondado, é ignorado.
-- **Justificativa:** Resultados monetários consistentes e auditáveis.
-- **Regra:** RN-009. **Evidência:** d-011.
+**Origem:** preservar os quatro nomes escolhidos pelo usuário.
 
-## AMB-010 — Quantidade de diárias
+**Decisão:**
 
-- **Texto original:** Hospedagem tem limite de R$ 250 por diária.
-- **Dúvida:** Como obter a quantidade quando ela está ausente?
-- **Decisão:** Não extrair números de texto livre. Considerar uma diária por data informada, compartilhada por todas as hospedagens do mesmo colaborador e data. Sinalizar `DIARIAS_NAO_INFORMADAS`.
-- **Justificativa:** Evitar interpretação frágil de descrições. A decisão conservadora fica explícita.
-- **Regra:** RN-010. **Evidência:** d-010/d-013.
+- total_original_convertido: bruto convertível antes das restrições.
+- total_solicitado: base elegível antes da redução por limites.
+- total_reembolsavel: pagamento final.
+- total_nao_reembolsavel: solicitado menos pagamento.
 
-## AMB-011 — Capitalização de valores
+Remover total_bruto_convertido e total_nao_reembolsado.
 
-- **Texto original:** Categorias fora da política não são reembolsáveis.
-- **Dúvida:** `ALIMENTACAO` equivale a `alimentacao`?
-- **Decisão:** No valor de `categoria`, remover espaços ASCII nas extremidades e converter A-Z para a-z. Aceitar `alimentacao`, `transporte_urbano` e `hospedagem`. Não remover acentos nem criar aliases.
-- **Justificativa:** Resolver a variação observada preservando o vocabulário fechado.
-- **Regra:** RN-011. **Evidência:** d-014/d-005.
+Uma recusa exclusivamente por saldo esgotado permanece na base solicitada.
 
-## AMB-012 — Fim de semana
+**Justificativa:** manter a identidade previamente escolhida sem confundir bases distintas.
 
-- **Texto original:** A política não restringe dias úteis.
-- **Dúvida:** Plantão em sábado pode ser reembolsado?
-- **Decisão:** Aplicar as regras em todos os dias civis, inclusive sábados, domingos e feriados.
-- **Justificativa:** Não criar restrição ausente da política.
-- **Regra:** RN-012. **Evidência:** d-012.
+**Relação:** RN-016/026; AC-016/031; T-025/T-044.
 
-## AMB-013 — Capitalização de chaves
+### CONS-003 — Catálogo de motivos
 
-- **Texto original:** Respeite o formato da entrada.
-- **Dúvida:** `temNotaFiscal` e `TEM_NOTA_FISCAL` são aliases?
-- **Decisão:** As chaves são exatas e sensíveis a maiúsculas. `tem_nota_fiscal` é obrigatório e deve ser booleano. Aliases não substituem campos. Campos adicionais são ignorados e não afetam as regras.
-- **Justificativa:** Separar a normalização de valores da mudança de contrato.
-- **Regra:** RN-013. **Evidência:** caso adicional solicitado.
+**Origem:** necessidade de tornar implementável a lista ordenada de motivos.
 
-## AMB-014 — Falhas de entrada
-- **Texto original / origem:** Entrada de referência define forma, mas não recuperação.
-- **Dúvida:** Um item inválido aborta lote? Como tratar IDs ausentes/repetidos?
-- **Decisão proposta:** JSON inválido ou chaves JSON repetidas rejeitam o lote com `JSON_INVALIDO`; envelope inválido ou qualquer campo obrigatório de colaborador ausente, vazio ou de tipo incorreto rejeita o lote com `ENTRADA_INVALIDA`. Despesas estruturalmente inválidas são recusadas individualmente e todos os erros são registrados em ordem fixa. ID ausente gera ID determinístico por índice; ID presente inválido retorna null. ID repetido rejeita apenas a ocorrência posterior com `RECUSADO`/`DADO_INVALIDO` e erro `ID_REPETIDO`; o lote continua. IDs de itens estruturalmente inválidos não reservam IDs para deduplicação, mas seus valores fornecidos são considerados para evitar colisões de IDs gerados.
-- **Justificativa:** Garantir comportamento determinístico, sem saída financeira parcial para erros de lote e sem perder despesas válidas por um ID repetido.
-- **Regra:** RN-014. **Evidência:** correções 8, 17–18, 22–27, 33–44, 48, 51, 60–68 deste registro.
+**Decisão:** usar o catálogo único do spec, com LIMITE_DIARIO e LIMITE_MENSAL para as duas restrições.
 
-## AMB-015 — Precedência e motivos
+Preservar motivo singular por compatibilidade; motivos é a fonte normativa.
 
-- **Texto original:** A política contém regras sobrepostas.
-- **Dúvida:** Qual motivo prevalece?
-- **Decisão:** Aplicar a ordem da seção 8. Emitir um motivo principal e avisos separados. Duplicatas podem referenciar item recusado.
-- **Justificativa:** Evitar resultados e consumo de teto dependentes de verificações implícitas.
-- **Regra:** RN-015. **Evidência:** d-013.
+DENTRO_DO_LIMITE é usado no singular quando a lista está vazia.
 
-## AMB-016 — Totais e status
-- **Texto original / origem:** Schema de saída é definido pelo participante.
-- **Dúvida:** Quais despesas entram em contagens e totais?
-- **Decisão proposta:** `total_itens` e contagens incluem somente despesas estruturalmente válidas, incluindo IDs repetidos e duplicatas por conteúdo; despesas estruturalmente inválidas permanecem em `items`, mas ficam fora de contagens e totais. `total_solicitado` soma apenas valores arredondados de itens válidos que chegam ao cálculo de limites; recusados por regra de negócio, duplicatas, ignorados e inválidos são excluídos. `total_reembolsavel` soma pagamentos. `total_nao_reembolsavel = total_solicitado - total_reembolsavel`.
-- **Justificativa:** Fazer o resumo refletir itens considerados na avaliação financeira e manter reconciliação dos totais definidos.
-- **Regra:** RN-016/RN-018. **Evidência:** correções 3, 12, 25–29, 37, 42–50, 52.
+**Justificativa:** eliminar aliases e representar limites simultâneos sem perder informação.
 
-## Registro das correções 1–68
+**Relação:** RN-015/025; AC-015/032; T-043.
 
-As escolhas abaixo foram recolhidas durante a revisão conversacional e permanecem **propostas pendentes de aprovação oficial**. “Teste pendente” significa que o caso deve existir e passar na suíte automatizada; não afirma que já foi implementado ou executado.
+### CONS-004 — Moeda na duplicidade
 
-| Correção | Decisão consolidada | Relação | Estado do teste |
-|---:|---|---|---|
-| 1 | Gerar ID quando o campo estiver ausente | RN-014, AC-014 | Pendente de inspeção/execução |
-| 2 | Registrar requisito do Dia 2 e revisar ao recebê-lo | Seção 10 | Requisito recebido; integração pendente |
-| 3 | Excluir despesas inválidas e duplicatas dos totais financeiros | RN-016, AC-016 | Pendente de inspeção/execução |
-| 4 | Manter interpretação conservadora para viagem/diárias; não inferir de texto | RN-005/RN-010, AC-005/010 | Pendente de inspeção/execução |
-| 5 | Associar cada AC a teste identificável e só marcar validado após execução aprovada | Seção 11 | Pendente |
-| 6 | Primeiro ID válido mantido; ocorrência posterior rejeitada no item e excluída dos totais | RN-007/RN-014 | Pendente |
-| 7 | Manter itens inválidos na saída com status/motivo/erros; sem lista redundante | Schema de saída | Pendente |
-| 8 | IDs gerados determinísticos por índice, evitando colisões com IDs fornecidos | RN-014 | Pendente |
-| 9 | Manter Dia 2 como pendente até recebimento do requisito | Seção 10 | Substituída: requisito recebido; integração pendente |
-| 10 | Decisões continuam propostas até aprovação oficial | Cabeçalho | N/A |
-| 11 | ACs no spec; casos completos de entrada/saída na suíte de testes separada | Seção 11 | Caminho/nome da suíte a confirmar no repositório |
-| 12 | Total solicitado exclui inválidos, duplicatas, ignorados e recusados | RN-016 | Pendente |
-| 13 | Rastrear AMB → RN → AC → teste; declarar ausência de relação direta quando aplicável | Seção 11 | Pendente |
-| 14 | `spec.md` e `DECISIONS.md` têm versionamento independente, com relação explicada | Cabeçalhos | Aplicado nesta proposta |
-| 15 | Propor `spec.md` v0.2 e preservar histórico de v0.1 | Cabeçalho | Pendente de aprovação |
-| 16 | Usar status/motivo/justificativa/erros existentes; inválido DADO_INVALIDO, duplicata de conteúdo DUPLICATA | Schema/RN-014 | Pendente |
-| 17 | IDs gerados verificam IDs fornecidos e gerados; colisão não aborta lote | RN-014 | Pendente |
-| 18 | Colisão: `gerado-{índice}`, depois `gerado-{índice}-1`, `-2` etc. | RN-014 | Pendente |
-| 19 | Recalcular exemplo conforme regras e identificar como esperado, não validado | Seção 9 | Pendente de execução |
-| 20 | Dia 2 explicitamente pendente | Seção 10 | Substituída: requisito recebido; integração pendente |
-| 21 | Item estruturalmente inválido não reserva ID para deduplicação | RN-014 | Pendente |
-| 22 | ID e conteúdo são critérios separados; decisão refinada pela correção 27 | RN-007 | Pendente |
-| 23 | Gerar ID somente quando campo ausente; valor presente vazio/tipo errado é inválido | RN-014 | Pendente |
-| 24 | Gerar ID para campo ausente mesmo se outro campo do item for inválido | RN-014 | Pendente |
-| 25 | `total_itens`/contagens excluem estruturalmente inválidos | RN-016/RN-018 | Pendente |
-| 26 | ID repetido tem precedência sobre duplicidade por conteúdo | RN-007/RN-014 | Pendente |
-| 27 | `total_solicitado` só inclui itens válidos elegíveis antes dos limites; exclusões documentadas | RN-016 | Pendente |
-| 28 | Contagens apenas de itens estruturalmente válidos | RN-016/RN-018 | Pendente |
-| 29 | Resolver conflito favorecendo a regra de ID repetido sobre conteúdo duplicado | RN-007/RN-014 | Pendente |
-| 30 | Rejeitar somente ocorrência posterior do ID repetido; continuar lote | RN-014 | Pendente |
-| 31 | Emitir `versao_spec: "0.2"` em sucesso, falha e exemplos | Schema | Pendente |
-| 32 | Normalizar ID com trim ASCII externo e comparação sem diferença de caixa | RN-007/RN-014 | Pendente |
-| 33 | Preservar ID original na saída; normalizar somente para comparação | RN-014 | Pendente |
-| 34 | Usar erro `ID_REPETIDO` em `erros`, mantendo motivo `DADO_INVALIDO` | RN-014 | Pendente |
-| 35 | Remover `IDS_REPETIDOS` dos erros de lote | RN-014 | Pendente |
-| 36 | Resumo conta apenas itens estruturalmente válidos | RN-016/RN-018 | Pendente |
-| 37 | Caso de borda de IDs com espaços/caixa reflete normalização | RN-007 | Pendente |
-| 38 | ID presente inválido retorna null; não gerar substituto | RN-014 | Pendente |
-| 39 | Checagem de colisão de IDs gerados usa mesma normalização | RN-014 | Pendente |
-| 40 | Validar estrutura, depois ID repetido, depois conteúdo duplicado, depois regras de negócio | RN-014/RN-015 | Pendente |
-| 41 | Duplicata por conteúdo mantém valor solicitado arredondado, reembolso zero | RN-007/RN-016 | Pendente |
-| 42 | Recusa por regra de negócio mantém valor solicitado arredondado, mas sai dos totais | RN-016 | Pendente |
-| 43 | ID ausente gera sem erro; ID inválido usa `TIPO_OU_FORMATO_INVALIDO`; ID repetido usa `ID_REPETIDO` | RN-014 | Pendente |
-| 44 | Manter nome `total_solicitado` e documentar a base elegível antes dos limites | RN-016 | Pendente |
-| 45 | `total_nao_reembolsavel = total_solicitado - total_reembolsavel` | RN-016 | Pendente |
-| 46 | ID repetido conta em `total_itens`/`recusados`, mas não em totais financeiros | RN-014/RN-016 | Pendente |
-| 47 | Evitar colisão com IDs fornecidos inclusive em itens estruturalmente inválidos | RN-014 | Pendente |
-| 48 | Valor válido zero/negativo conta em itens/status ignorados, mas não em totais financeiros | RN-008/RN-009/RN-016 | Pendente |
-| 49 | Para zero/negativo, `valor_solicitado` e `valor_reembolsavel` são 0; preservar original válido | RN-008/RN-009 | Pendente |
-| 50 | ID gerado usa índice original zero-based da lista completa | RN-014 | Pendente |
-| 51 | Duplicata de conteúdo conta em `total_itens`/`ignorados`, mas não em totais financeiros | RN-007/RN-016 | Pendente |
-| 52 | `duplicata_de_indice` aponta primeiro item estruturalmente válido com conteúdo, mesmo se recusado | RN-007 | Pendente |
-| 53 | Fornecedor/descrição: trim ASCII externo, sem diferença de caixa, preservar espaços internos/acentos | RN-007 | Pendente |
-| 54 | Aplicar NFC antes de comparar fornecedor/descrição; diferenças reais de acento permanecem | RN-007 | Pendente |
-| 55 | Comparar valores de duplicata após arredondamento half-up a duas casas | RN-007/RN-009 | Pendente |
-| 56 | `tem_nota_fiscal` não participa da chave de conteúdo duplicado | RN-007 | Pendente |
-| 57 | Normalizar datas válidas para representação comum antes de comparar duplicatas | RN-007 | Pendente |
-| 58 | Comparar categoria normalizada, não texto bruto | RN-007/RN-011 | Pendente |
-| 59 | Registrar todos os erros estruturais em ordem fixa; recusar item uma vez | RN-014 | Pendente |
-| 60 | Ordem de erros independe da ordem das chaves JSON | RN-014 | Pendente |
-| 61 | Ordem começa por ID, segue campos obrigatórios do schema e termina nos opcionais | RN-014 | Pendente |
-| 62 | Ignorar campos desconhecidos nas despesas; testar comportamento | RN-013/AC-013 | Pendente |
-| 63 | Ignorar campos desconhecidos na raiz/envelope | RN-013/RN-014 | Pendente |
-| 64 | Ignorar campos desconhecidos no envelope/raiz | RN-013/RN-014 | Pendente |
-| 65 | Trocar automaticamente datas inicial/final válidas se invertidas | RN-006 | Pendente |
-| 66 | Retornar no output o período corrigido usado | RN-006 | Pendente |
-| 67 | Chaves JSON repetidas causam `JSON_INVALIDO` e rejeição do lote inteiro | RN-014/AC-019 | Pendente |
-| 68 | Colaborador obrigatório incompleto causa `ENTRADA_INVALIDA` para o lote inteiro | RN-014/AC-020 | Pendente |
-| 69a | Data de despesa inválida recusa somente o item; data válida fora da competência recusa somente o item; lote continua | RN-006/RN-014 | Decidida parcialmente; falta refletir/testar no repositório |
+**Origem:** introdução de moedas diferentes pelo Envelope 2.
 
-## Correção 69 — decisão parcial registrada
+**Decisão:** incluir moeda efetiva e valor original válido na chave de conteúdo.
 
-- Data de despesa ausente, malformada ou inexistente: recusar somente o item como `DADO_INVALIDO`; o lote continua.
-- Data de despesa válida, mas fora do período/competência: recusar somente o item como `FORA_DA_COMPETENCIA`; o lote continua.
-- Datas de início/fim válidas e invertidas: trocar automaticamente e devolver o período corrigido.
-- Ainda pendente: competência ausente/inválida e datas de início/fim do período ausentes, inválidas ou inexistentes. Não presumir regra para esses casos.
+**Justificativa:** mesmo número em moedas diferentes não comprova duplicidade.
+
+**Relação:** RN-007; AC-036; T-018.
+
+### CONS-005 — Exibição e valor inválido
+
+**Decisão:** valores aceitos inteiros ou com uma casa são exibidos com duas. Valores originais com mais de duas casas são inválidos, sem arredondamento de entrada.
+
+valor_original inválido retorna null; o erro informa a falha.
+
+Cotação preserva precisão interna e usa duas casas apenas na exibição.
+
+**Justificativa:** formatação não deve transformar entrada inválida em valor aparentemente aceito.
+
+**Relação:** RN-009/021/023/026; AC-009/026/027/032; T-036/T-037/T-039/T-043.
+
+### CONS-006 — Completude independente da elegibilidade
+
+**Decisão:** obter o valor convertido para o bruto sempre que houver dados suficientes, mesmo se a despesa for inelegível ou tiver outro defeito estrutural.
+
+Se não for possível obter o valor em BRL, excluir a despesa dos totais monetários e marcar totais_completos=false.
+
+**Justificativa:** recusa não significa automaticamente impossibilidade de conversão.
+
+**Relação:** RN-016/026; AC-030/031; T-044.
+
+### CONS-007 — Rastreabilidade
+
+**Decisão:** corrigir todas as referências das tarefas para os IDs realmente existentes.
+
+Exemplos:
+
+- JSON repetido: correção 67.
+- Colaborador inválido: correção 68.
+- Inversão do período: correção 65.
+- Retorno do período corrigido: correção 66.
+
+**Relação:** matriz AC/RN do spec; T-030/T-045.
+
+## 6. Regras substituídas
+
+Não implementar como alternativas vigentes:
+
+| Regra anterior | Regra vigente |
+|---|---|
+| NF sobre valor original bruto | NF sobre preliminar após limites |
+| Arredondar valor original com mais de duas casas | Invalidar somente a despesa |
+| Zero/negativo como ignorado ou estorno | ENTRADA_INVALIDA individual |
+| Categorias fixas do exemplo | Categorias da política |
+| Apenas motivo singular | motivos normativo e singular compatível |
+| Política pode elevar representação acima de 300.00 | Teto absoluto 300.00 |
+| Toda recusa sai da base solicitada | Somente inelegibilidade; recusa exclusiva por limite permanece |
+| Bruto menos pagamento como total_nao_reembolsavel | Solicitado menos pagamento |
+| Período global inválido ainda sem decisão | ENTRADA_INVALIDA global |
+| Quadro antigo de 14 itens como resultado vigente | Recalcular após inspeção da fixture original |
+
+## 7. Pendências e evidências
+
+Pendências técnicas:
+
+- Conferir schemas originais da política e do câmbio.
+- Inspecionar CLI e suíte reais.
+- Implementar e executar testes.
+- Registrar resultados e atualizar rastreabilidade.
+
+Nenhum teste foi declarado aprovado por esta revisão documental.
+
+Nenhuma pendência técnica autoriza reabrir silenciosamente decisões já tomadas.
